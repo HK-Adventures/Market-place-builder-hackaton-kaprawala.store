@@ -2,10 +2,11 @@
 import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -27,9 +28,24 @@ export default function LoginPage() {
       if (error) throw error;
 
       if (data.user) {
-        router.push('/profile');
+        // Debug logging
+        console.log('Login Success:', {
+          userEmail: data.user.email,
+          adminEmail: process.env.NEXT_PUBLIC_ADMIN_EMAIL,
+          isAdmin: data.user.email?.toLowerCase() === process.env.NEXT_PUBLIC_ADMIN_EMAIL?.toLowerCase()
+        });
+
+        // Get the redirect URL from the search params or default to profile
+        const redirectTo = searchParams.get('redirectTo') || '/profile';
+        
+        // Add a small delay to ensure session is set
+        setTimeout(() => {
+          router.push(redirectTo);
+          router.refresh(); // Force a refresh to update the auth state
+        }, 100);
       }
     } catch (error) {
+      console.error('Login Error:', error);
       setError(error instanceof Error ? error.message : 'An error occurred during login');
     } finally {
       setLoading(false);

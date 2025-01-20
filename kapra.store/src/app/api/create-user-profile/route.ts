@@ -9,6 +9,7 @@ export async function POST(request: Request) {
       _type: 'user',
       email,
       supabaseId,
+      fullName: '',
       phoneNumber: '',
       address: {
         street: '',

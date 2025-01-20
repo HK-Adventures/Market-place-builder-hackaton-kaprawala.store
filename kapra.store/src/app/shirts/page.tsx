@@ -11,6 +11,7 @@ interface Product {
   description: string;
   price: number;
   gender: string;
+  stockQuantity: number;
   image: {
     asset: {
       _ref: string;

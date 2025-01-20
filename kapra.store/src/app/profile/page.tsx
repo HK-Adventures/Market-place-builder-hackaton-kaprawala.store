@@ -1,8 +1,14 @@
 'use client'
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { client } from '../../sanity/client';
 import { useRouter } from 'next/navigation';
+
+interface SupabaseUser {
+  id: string;
+  email?: string | null;
+  // ... other Supabase user properties if needed
+}
 
 interface User {
   id: string;
@@ -10,6 +16,7 @@ interface User {
 }
 
 interface Profile {
+  fullName: string;
   phoneNumber: string;
   address: {
     street: string;
@@ -22,8 +29,12 @@ interface Profile {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [userData, setUserData] = useState<SupabaseUser | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile>({
+    fullName: '',
     phoneNumber: '',
     address: {
       street: '',
@@ -33,13 +44,24 @@ export default function ProfilePage() {
       country: ''
     }
   });
-  const [loading, setLoading] = useState(true);
   const [saveLoading, setSaveLoading] = useState(false);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    
+    const fetchUserData = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          router.push('/login');
+          return;
+        }
+        // Fetch user data here
+        setUserData(session.user as SupabaseUser);
         setUser({
           id: session.user.id,
           email: session.user.email || ''
@@ -51,6 +73,7 @@ export default function ProfilePage() {
         );
         if (userData) {
           setProfile({
+            fullName: userData.fullName || '',
             phoneNumber: userData.phoneNumber || '',
             address: {
               street: userData.address?.street || '',
@@ -61,14 +84,30 @@ export default function ProfilePage() {
             }
           });
         }
-      } else {
-        router.push('/login');
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
-    fetchUser();
-  }, [router]);
+    fetchUserData();
+
+    // Add auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        router.push('/login');
+      }
+    });
+
+    // Cleanup subscription
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [mounted, router]);
+
+  // Prevent hydration issues by not rendering until mounted
+  if (!mounted) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,6 +120,7 @@ export default function ProfilePage() {
         _type: 'user',
         email: user.email,
         supabaseId: user.id,
+        fullName: profile.fullName,
         phoneNumber: profile.phoneNumber,
         address: profile.address
       };
@@ -131,6 +171,21 @@ export default function ProfilePage() {
           <h1 className="text-4xl font-bold mb-8 text-gray-900">My Profile</h1>
           
           <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm p-6 space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Full Name
+              </label>
+              <input
+                type="text"
+                value={profile.fullName}
+                onChange={(e) => setProfile({
+                  ...profile,
+                  fullName: e.target.value
+                })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 text-gray-900"
+              />
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Email

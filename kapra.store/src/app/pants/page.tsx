@@ -10,6 +10,9 @@ interface Product {
   name: string;
   description: string;
   price: number;
+  gender?: string;
+  sortBy?: string;
+  stockQuantity: number;
   image: {
     asset: {
       _ref: string;
@@ -54,17 +57,18 @@ export default function PantsPage() {
   };
 
   const applyFilters = () => {
-    const filtered = products.filter(product => {
-      const price = product.price;
-      const gender = product.gender;
-      const sortBy = product.sortBy;
-
-      const priceMatch = price >= filters.minPrice && price <= filters.maxPrice;
-      const genderMatch = gender === filters.gender;
-      const sortMatch = sortBy === 'default' || (sortBy === 'price-low-high' && price <= sortBy) || (sortBy === 'price-high-low' && price >= sortBy);
-
-      return priceMatch && genderMatch && sortMatch;
+    let filtered = products.filter(product => {
+      const priceMatch = product.price >= filters.minPrice && product.price <= filters.maxPrice;
+      const genderMatch = filters.gender === 'all' || product.gender === filters.gender;
+      return priceMatch && genderMatch;
     });
+
+    // Handle sorting separately
+    if (filters.sortBy === 'price-low-high') {
+      filtered.sort((a, b) => a.price - b.price);
+    } else if (filters.sortBy === 'price-high-low') {
+      filtered.sort((a, b) => b.price - a.price);
+    }
 
     setFilteredProducts(filtered);
     setShowFilters(false);

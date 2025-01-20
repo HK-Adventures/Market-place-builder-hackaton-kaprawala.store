@@ -1,121 +1,98 @@
 'use client'
+import { useState, useEffect } from 'react';
 import { client } from '../../sanity/client';
-import { useEffect, useState } from 'react';
-import { useCart } from '../../context/CartContext';
-import Link from 'next/link';
-import { urlFor } from '../../sanity/lib/image';
+import ProductCard from '../../components/ProductCard';
 
 interface Product {
   _id: string;
   name: string;
-  description: string;
   price: number;
-  stockQuantity: number;
-  category: string;
-  image: {
-    asset: {
-      _ref: string;
-      _type: 'reference';
-    };
-    _type: 'image';
+  images: any[];
+  category: {
+    _id: string;
+    name: string;
   };
+  description?: string;
+  stockQuantity?: number;
 }
 
-const formatPrice = (price: number) => {
-  return `PKR ${price.toLocaleString()}`;
-};
-
-const ProductsPage = () => {
-  const [productsByCategory, setProductsByCategory] = useState<{ [key: string]: Product[] }>({});
-  const { addToCart } = useCart();
+export default function ProductsPage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchData = async () => {
       try {
-        // Fetch 2 products from each category
-        const categories = ['shirts', 'pants', 'suits', 'kids'];
-        const productsData: { [key: string]: Product[] } = {};
-
-        for (const category of categories) {
-          const data = await client.fetch(
-            `*[_type == "product" && category == $category][0...2]{
+        // Fetch products and categories with proper references
+        const [productsData, categoriesData] = await Promise.all([
+          client.fetch(`
+            *[_type == "product"] {
               _id,
               name,
-              description,
               price,
+              description,
               stockQuantity,
-              category,
-              image
-            }`,
-            { category }
-          );
-          productsData[category] = data;
-        }
+              images,
+              "category": category->{
+                _id,
+                name
+              }
+            }
+          `),
+          client.fetch(`
+            *[_type == "category"] {
+              _id,
+              name
+            } | order(name asc)
+          `)
+        ]);
 
-        setProductsByCategory(productsData);
+        console.log('Fetched products:', productsData);
+        console.log('Fetched categories:', categoriesData);
+
+        setProducts(productsData);
+        setCategories(categoriesData);
       } catch (error) {
-        console.error("Error fetching products:", error);
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
       }
     };
-    fetchProducts();
+
+    fetchData();
   }, []);
+
+  // Filter products based on category reference
+  const filteredProducts = selectedCategory === 'all'
+    ? products
+    : products.filter(product => product.category?._id === selectedCategory);
+
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold text-center mb-12 text-gray-900">
-        Our Collections
-      </h1>
+      <div className="mb-8">
+        <select
+          value={selectedCategory}
+          onChange={(e) => setSelectedCategory(e.target.value)}
+          className="block w-full md:w-auto px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="all">All Categories</option>
+          {categories.map((category) => (
+            <option key={category._id} value={category._id}>
+              {category.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      {Object.entries(productsByCategory).map(([category, products]) => (
-        <div key={category} className="mb-16">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 capitalize">
-              {category}
-            </h2>
-            <Link 
-              href={`/${category}`}
-              className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
-            >
-              View All →
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {products.map((product) => (
-              <div key={product._id} className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
-                <Link href={`/products/${product._id}`}>
-                  <div className="relative h-96 cursor-pointer">
-                    <img
-                      src={urlFor(product.image).width(800).height(600).url()}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="p-6">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">{product.name}</h3>
-                    <p className="text-gray-600 mb-4 line-clamp-2">{product.description}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xl font-bold text-gray-900">
-                        {formatPrice(product.price)}
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-                <div className="px-6 pb-6">
-                  <button
-                    onClick={() => addToCart(product)}
-                    className="w-full bg-black text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition-colors"
-                  >
-                    Add to Cart
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {filteredProducts.map((product) => (
+          <ProductCard key={product._id} product={product} />
+        ))}
+      </div>
     </div>
   );
-};
-
-export default ProductsPage; 
+} 

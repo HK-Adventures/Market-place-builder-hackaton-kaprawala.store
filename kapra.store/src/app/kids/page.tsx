@@ -10,6 +10,8 @@ interface Product {
   name: string;
   description: string;
   price: number;
+  size?: string;
+  stockQuantity: number;
   image: {
     asset: {
       _ref: string;

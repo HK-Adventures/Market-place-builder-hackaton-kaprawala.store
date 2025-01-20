@@ -32,16 +32,9 @@ export default {
     {
       name: 'category',
       title: 'Category',
-      type: 'string',
-      options: {
-        list: [
-          { title: 'Shirts', value: 'shirts' },
-          { title: 'Pants', value: 'pants' },
-          { title: 'Complete Suits', value: 'suits' },
-          { title: 'Kids', value: 'kids' },
-        ],
-      },
-      validation: (rule: Rule) => rule.required(),
+      type: 'reference',
+      to: [{ type: 'category' }],
+      validation: Rule => Rule.required()
     },
     {
       name: 'filters',
@@ -152,6 +145,28 @@ export default {
         }
       ],
       validation: (rule: Rule) => rule.min(1).required(),
+    },
+    {
+      name: 'discount',
+      title: 'Discount Percentage',
+      type: 'number',
+    },
+    {
+      name: 'promoCode',
+      title: 'Promotion Code',
+      type: 'string',
+    },
+    {
+      name: 'promoExpiry',
+      title: 'Promotion Expiry Date',
+      type: 'datetime',
+    },
+    {
+      name: 'regularDiscount',
+      title: 'Regular Discount',
+      type: 'number',
+      description: 'Regular discount percentage (0-100)',
+      validation: (Rule: any) => Rule.min(0).max(100)
     },
   ],
   preview: {
