@@ -61,11 +61,12 @@ export default function NavBar() {
     { name: 'Contact', href: '/contact' },
     { name: 'Privacy Policy', href: '/privacy-policy' },
     { name: 'Terms & Conditions', href: '/terms' },
-    { name: 'Shipping Policy', href: '/shipping' },
+    { name: 'Shipping Policy', href: '/shipping-policy' },
     { name: 'Return Policy', href: '/return-policy' },
-    { name: 'FAQ', href: '/faq' },
+    { name: 'FAQ', href: '/faqs' },
     { name: 'Size Guide', href: '/size-guide' },
-    { name: 'Track Order', href: '/track-order' },
+    { name: 'Store Locator', href: '/store-locator' },
+    { name: 'Careers', href: '/careers' },
   ];
 
   if (!mounted) return null;
@@ -149,11 +150,9 @@ export default function NavBar() {
                 <Menu.Items className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1">
                   {userState ? (
                     <>
-                      <Menu.Item>
-                        <Link href="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                          My Profile
-                        </Link>
-                      </Menu.Item>
+                      <div className="px-4 py-2 text-sm text-gray-700 border-b border-gray-100">
+                        {userState.email}
+                      </div>
                       <Menu.Item>
                         <Link 
                           href="/my-orders" 

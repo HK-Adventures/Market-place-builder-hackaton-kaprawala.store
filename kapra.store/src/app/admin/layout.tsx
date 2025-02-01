@@ -4,6 +4,15 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 
+const adminNavItems = [
+  { href: '/admin', label: 'Dashboard' },
+  { href: '/admin/products', label: 'Products' },
+  { href: '/admin/orders', label: 'Orders' },
+  { href: '/admin/customers', label: 'Customers' },
+  { href: '/admin/promotions', label: 'Promotions' },
+  { href: '/admin/shipments', label: 'Shipments' }
+];
+
 export default function AdminLayout({
   children,
 }: {
@@ -35,21 +44,13 @@ export default function AdminLayout({
     return <div>Loading...</div>;
   }
 
-  const navItems = [
-    { href: '/admin', label: 'Dashboard' },
-    { href: '/admin/products', label: 'Products' },
-    { href: '/admin/orders', label: 'Orders' },
-    { href: '/admin/shipments', label: 'Shipments' },
-    { href: '/admin/customers', label: 'Customers' }
-  ];
-
   return (
     <div className="min-h-screen bg-gray-100">
       <nav className="bg-white shadow-md">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex justify-between h-16">
             <div className="flex">
-              {navItems.map((item) => (
+              {adminNavItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}

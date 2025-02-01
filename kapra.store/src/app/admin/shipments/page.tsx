@@ -34,6 +34,7 @@ interface Order {
     trackingNumber: string;
     courier: string;
     shippedAt: string;
+    shippingCost: number;
   };
 }
 
@@ -53,10 +54,19 @@ export default function ShipmentsPage() {
   const [loading, setLoading] = useState(true);
   const [trackingNumber, setTrackingNumber] = useState('');
   const [processingOrder, setProcessingOrder] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'pending' | 'processing' | 'all'>('pending');
+  const [filter, setFilter] = useState<'pending' | 'processing' | 'all'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('shipmentsFilter') as 'pending' | 'processing' | 'all') || 'all';
+    }
+    return 'all';
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [shippingStatuses, setShippingStatuses] = useState<Record<string, ShippingStatus>>({});
   const router = useRouter();
+
+  useEffect(() => {
+    localStorage.setItem('shipmentsFilter', filter);
+  }, [filter]);
 
   useEffect(() => {
     fetchOrders();
@@ -71,13 +81,11 @@ export default function ShipmentsPage() {
       }
 
       let filterCondition = '';
-      if (filter === 'pending') {
-        filterCondition = '&& status == "pending"';
-      } else if (filter === 'processing') {
-        filterCondition = '&& status == "processing"';
+      if (filter !== 'all') {
+        filterCondition = `&& status == "${filter}"`;
       }
 
-      const query = `*[_type == "order" ${filterCondition} && paymentStatus != "failed"] | order(orderDate desc) {
+      const query = `*[_type == "order" ${filterCondition} && paymentMethod == "cod" && !(_id in path("drafts.**"))] | order(orderDate desc) {
         _id,
         orderId,
         customerInfo,
@@ -85,7 +93,9 @@ export default function ShipmentsPage() {
         totalAmount,
         items,
         status,
-        tracking
+        tracking,
+        paymentMethod,
+        paymentStatus
       }`;
 
       const fetchedOrders = await client.fetch(query);
@@ -101,30 +111,63 @@ export default function ShipmentsPage() {
     setProcessingOrder(orderId);
     try {
       const order = orders.find(o => o._id === orderId);
-      if (!order) return;
+      if (!order) {
+        throw new Error('Order not found');
+      }
+
+      console.log('Generating label for order:', order);
 
       // Generate shipping label
-      const shippingLabel = await shippingService.generateLabel(order);
+      const label = await shippingService.generateLabel({
+        customerInfo: order.customerInfo,
+        items: order.items
+      });
 
-      // Update order with shipping information
+      console.log('Label generated:', label);
+
+      // Update order in Sanity
       await client
         .patch(orderId)
         .set({
           status: 'processing',
           tracking: {
-            trackingNumber: shippingLabel.trackingNumber,
-            labelUrl: shippingLabel.labelUrl,
+            trackingNumber: label.trackingNumber,
+            courier: 'pakistan-post',
             shippedAt: new Date().toISOString(),
-            estimatedDelivery: shippingLabel.estimatedDelivery,
-            status: shippingLabel.status,
-          },
+            labelUrl: label.labelUrl,
+            status: label.status,
+            estimatedDelivery: label.estimatedDelivery,
+            shippingCost: label.shippingCost
+          }
         })
         .commit();
 
-      fetchOrders();
+      // Download the shipping label PDF
+      try {
+        const response = await fetch(label.labelUrl);
+        if (!response.ok) throw new Error('Failed to download label');
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `shipping-label-${order.orderId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } catch (downloadError) {
+        console.error('Error downloading label:', downloadError);
+        alert('Label generated but download failed. You can access the label from the tracking information.');
+      }
+
+      // Refresh orders list
+      await fetchOrders();
+
+      alert(`Shipping label generated successfully! Tracking number: ${label.trackingNumber}`);
+
     } catch (error) {
-      console.error('Error generating shipping label:', error);
-      alert('Failed to generate shipping label');
+      console.error('Error generating shipment:', error);
+      alert(error instanceof Error ? error.message : 'Failed to generate shipping label. Please try again.');
     } finally {
       setProcessingOrder(null);
     }
@@ -188,24 +231,24 @@ export default function ShipmentsPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Manage Shipments</h1>
-        <div className="flex space-x-4">
-          <input
-            type="text"
-            placeholder="Search shipments..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-          />
+        <h1 className="text-2xl font-bold">Shipments</h1>
+        <div className="flex gap-4">
           <select
             value={filter}
-            onChange={(e) => setFilter(e.target.value as any)}
-            className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            onChange={(e) => setFilter(e.target.value as 'pending' | 'processing' | 'all')}
+            className="px-4 py-2 border rounded-lg"
           >
+            <option value="all">All Orders</option>
             <option value="pending">Pending</option>
             <option value="processing">Processing</option>
-            <option value="all">All Orders</option>
           </select>
+          <input
+            type="text"
+            placeholder="Search orders..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="px-4 py-2 border rounded-lg"
+          />
         </div>
       </div>
 
@@ -231,6 +274,11 @@ export default function ShipmentsPage() {
                 </div>
                 <div className="text-right">
                   <p className="font-medium">PKR {order.totalAmount.toLocaleString()}</p>
+                  {order.tracking?.shippingCost && (
+                    <p className="text-sm text-gray-600">
+                      Shipping: PKR {order.tracking.shippingCost.toLocaleString()}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -311,17 +359,15 @@ export default function ShipmentsPage() {
                   )}
                 </div>
               ) : (
-                order.status === 'pending' && (
-                  <div className="flex space-x-4">
-                    <button
-                      onClick={() => handleShipment(order._id)}
-                      disabled={processingOrder === order._id}
-                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400"
-                    >
-                      {processingOrder === order._id ? 'Processing...' : 'Generate Shipping Label'}
-                    </button>
-                  </div>
-                )
+                <div className="flex space-x-4">
+                  <button
+                    onClick={() => handleShipment(order._id)}
+                    disabled={processingOrder === order._id}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400"
+                  >
+                    {processingOrder === order._id ? 'Processing...' : 'Generate Shipping Label'}
+                  </button>
+                </div>
               )}
             </div>
           </div>

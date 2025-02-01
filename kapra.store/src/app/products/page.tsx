@@ -25,32 +25,30 @@ export default function ProductsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch products and categories with proper references
-        const [productsData, categoriesData] = await Promise.all([
-          client.fetch(`
-            *[_type == "product"] {
-              _id,
-              name,
-              price,
-              description,
-              stockQuantity,
-              images,
-              "category": category->{
-                _id,
-                name
-              }
-            }
-          `),
-          client.fetch(`
-            *[_type == "category"] {
-              _id,
-              name
-            } | order(name asc)
-          `)
-        ]);
+        // Fetch products with proper category reference
+        const productsQuery = `*[_type == "product"] {
+          _id,
+          name,
+          price,
+          description,
+          stockQuantity,
+          images,
+          "category": category->{
+            _id,
+            name
+          }
+        }`;
 
-        console.log('Fetched products:', productsData);
-        console.log('Fetched categories:', categoriesData);
+        // Fetch only active categories
+        const categoriesQuery = `*[_type == "category" && isActive != false] {
+          _id,
+          name
+        } | order(name asc)`;
+
+        const [productsData, categoriesData] = await Promise.all([
+          client.fetch(productsQuery),
+          client.fetch(categoriesQuery)
+        ]);
 
         setProducts(productsData);
         setCategories(categoriesData);
@@ -64,12 +62,18 @@ export default function ProductsPage() {
     fetchData();
   }, []);
 
-  // Filter products based on category reference
+  // Filter products based on selected category
   const filteredProducts = selectedCategory === 'all'
     ? products
     : products.filter(product => product.category?._id === selectedCategory);
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl text-gray-600">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -88,11 +92,17 @@ export default function ProductsPage() {
         </select>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {filteredProducts.map((product) => (
-          <ProductCard key={product._id} product={product} />
-        ))}
-      </div>
+      {filteredProducts.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-gray-600">No products found in this category.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {filteredProducts.map((product) => (
+            <ProductCard key={product._id} product={product} />
+          ))}
+        </div>
+      )}
     </div>
   );
 } 

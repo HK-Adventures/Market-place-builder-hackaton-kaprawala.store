@@ -1,3 +1,5 @@
+import { Rule } from '@sanity/types';
+
 export default {
   name: 'category',
   title: 'Category',
@@ -7,7 +9,7 @@ export default {
       name: 'name',
       title: 'Name',
       type: 'string',
-      validation: (Rule: any) => Rule.required()
+      validation: (rule: Rule) => rule.required()
     },
     {
       name: 'slug',
@@ -16,40 +18,24 @@ export default {
       options: {
         source: 'name',
         maxLength: 96,
+        slugify: (input: string) => input
+          .toLowerCase()
+          .replace(/\s+/g, '-')
+          .slice(0, 96)
       },
-      validation: (Rule: any) => Rule.required()
-    },
-    {
-      name: 'description',
-      title: 'Description',
-      type: 'text',
-    },
-    {
-      name: 'image',
-      title: 'Image',
-      type: 'image',
-      options: {
-        hotspot: true,
-      },
-    },
-    {
-      name: 'order',
-      title: 'Order',
-      type: 'number',
-      description: 'Order to display categories in'
+      validation: (rule: Rule) => rule.required()
     },
     {
       name: 'isActive',
       title: 'Active',
       type: 'boolean',
-      description: 'Is this category currently active?',
-      initialValue: true
+      initialValue: true,
+      description: 'Inactive categories will not be shown in the store'
     }
   ],
   preview: {
     select: {
-      title: 'name',
-      media: 'image'
+      title: 'name'
     }
   }
 } 

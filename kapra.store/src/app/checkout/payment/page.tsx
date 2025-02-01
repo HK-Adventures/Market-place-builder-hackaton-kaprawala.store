@@ -1,10 +1,12 @@
 'use client'
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useCart } from '../../../context/CartContext';
 import { client } from '../../../sanity/client';
 import { supabase } from '../../../lib/supabase';
 import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
+import CheckoutForm from '../../../components/CheckoutForm';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -13,6 +15,7 @@ interface ShippingInfo {
   email: string;
   phoneNumber: string;
   address: string;
+  area: string;
   city: string;
   postalCode: string;
   country: string;
@@ -38,6 +41,13 @@ interface CustomerInfo {
     country: string;
   };
   createdAt?: string;
+}
+
+interface ShippingRate {
+  cost: number;
+  currency: string;
+  estimatedDays: number;
+  service: string;
 }
 
 const PaymentForm = ({ clientSecret, onSuccess }: { clientSecret: string, onSuccess: () => void }) => {
@@ -118,6 +128,7 @@ const PaymentForm = ({ clientSecret, onSuccess }: { clientSecret: string, onSucc
 
 export default function PaymentPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { cart, clearCart } = useCart();
   const [loading, setLoading] = useState(true);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
@@ -127,6 +138,19 @@ export default function PaymentPage() {
   const [checkingPromo, setCheckingPromo] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'card'>('cod');
   const [clientSecret, setClientSecret] = useState<string>('');
+  const [shippingInfo, setShippingInfo] = useState<ShippingInfo>({
+    fullName: '',
+    email: '',
+    phoneNumber: '',
+    address: '',
+    area: '',
+    city: '',
+    postalCode: '',
+    country: 'Pakistan'
+  });
+  const [shippingRate, setShippingRate] = useState<ShippingRate | null>(null);
+  const [storedShippingInfo, setStoredShippingInfo] = useState<ShippingInfo | null>(null);
+  const [storedShippingRate, setStoredShippingRate] = useState<ShippingRate | null>(null);
 
   useEffect(() => {
     const loadUserInfo = async () => {
@@ -164,6 +188,49 @@ export default function PaymentPage() {
   useEffect(() => {
     console.log('Current cart:', cart); // Debug cart contents
   }, [cart]);
+
+  useEffect(() => {
+    const shippingInfoStr = sessionStorage.getItem('shippingInfo');
+    const shippingRateStr = sessionStorage.getItem('shippingRate');
+
+    if (!shippingInfoStr || !shippingRateStr || cart.length === 0) {
+      router.push('/checkout');
+      return;
+    }
+
+    const parsedShippingInfo = JSON.parse(shippingInfoStr);
+    const parsedShippingRate = JSON.parse(shippingRateStr);
+    
+    setStoredShippingInfo(parsedShippingInfo);
+    setStoredShippingRate(parsedShippingRate);
+
+    const createPaymentIntent = async () => {
+      try {
+        // Calculate total amount including shipping
+        const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const shipping = parsedShippingRate.cost;
+        const total = subtotal + shipping;
+
+        const response = await fetch('/api/create-payment-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: total,
+            orderId: searchParams.get('orderId')
+          }),
+        });
+
+        const data = await response.json();
+        setClientSecret(data.clientSecret);
+      } catch (error) {
+        console.error('Error creating payment intent:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    createPaymentIntent();
+  }, [cart, router, searchParams]);
 
   const checkPromoCode = async () => {
     if (!promoCode.trim()) {
@@ -354,6 +421,8 @@ export default function PaymentPage() {
       console.log('Created order:', order);
 
       clearCart();
+      sessionStorage.removeItem('shippingInfo');
+      sessionStorage.removeItem('shippingRate');
       router.push(`/order-success?orderId=${order._id}`);
     } catch (error) {
       console.error('Error placing order:', error);
@@ -363,7 +432,10 @@ export default function PaymentPage() {
     }
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading || !storedShippingInfo || !storedShippingRate) return <div>Loading...</div>;
+
+  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const total = subtotal + storedShippingRate.cost;
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -434,11 +506,11 @@ export default function PaymentPage() {
                 <div className="border-t pt-4">
                   <div className="flex justify-between font-semibold">
                     <span>Total</span>
-                    <span>PKR {calculateTotal().toLocaleString()}</span>
+                    <span>PKR {total.toLocaleString()}</span>
                   </div>
                   {appliedPromo && (
                     <p className="text-green-600 text-sm text-right">
-                      Savings: PKR {((cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)) - calculateTotal()).toLocaleString()}
+                      Savings: PKR {((subtotal) - calculateTotal()).toLocaleString()}
                     </p>
                   )}
                 </div>
@@ -477,10 +549,13 @@ export default function PaymentPage() {
 
               {paymentMethod === 'card' && clientSecret && (
                 <div className="mt-4">
-                  <PaymentForm 
-                    clientSecret={clientSecret}
-                    onSuccess={handlePaymentSuccess}
-                  />
+                  <Elements stripe={stripePromise} options={{ clientSecret }}>
+                    <CheckoutForm 
+                      shippingInfo={storedShippingInfo}
+                      shippingRate={storedShippingRate}
+                      onSuccess={handlePaymentSuccess}
+                    />
+                  </Elements>
                 </div>
               )}
 

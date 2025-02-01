@@ -9,6 +9,7 @@ export default {
       name: 'name',
       title: 'Name',
       type: 'string',
+      validation: (rule: Rule) => rule.required()
     },
     {
       name: 'slug',
@@ -34,7 +35,13 @@ export default {
       title: 'Category',
       type: 'reference',
       to: [{ type: 'category' }],
-      validation: Rule => Rule.required()
+      validation: (rule: Rule) => rule.required(),
+      options: {
+        disableNew: false,
+        modal: {
+          type: 'popup'
+        }
+      }
     },
     {
       name: 'filters',
@@ -85,17 +92,23 @@ export default {
       },
     },
     {
+      name: 'stockQuantity',
+      title: 'Stock Quantity',
+      type: 'number',
+      validation: (Rule: Rule) => Rule.required().min(0),
+      initialValue: 0,
+      description: 'Number of items in stock'
+    },
+    {
       name: 'inStock',
       title: 'In Stock',
       type: 'boolean',
       initialValue: true,
-    },
-    {
-      name: 'stockQuantity',
-      title: 'Stock Quantity',
-      type: 'number',
-      validation: (rule: Rule) => rule.required().min(0),
-      initialValue: 0,
+      description: 'Automatically managed based on stock quantity',
+      readOnly: true,
+      options: {
+        hidden: true // Hide from Studio UI since it's computed
+      }
     },
     {
       name: 'sku',
@@ -118,6 +131,8 @@ export default {
           type: 'image',
           options: {
             hotspot: true,
+            storeOriginalFilename: true,
+            accept: 'image/*'
           },
           fields: [
             {
@@ -140,33 +155,74 @@ export default {
               name: 'alt',
               title: 'Alt Text',
               type: 'string',
+              description: 'Alternative text for accessibility',
+              validation: (Rule: Rule) => Rule.required()
+            },
+            {
+              name: 'isPrimary',
+              title: 'Primary Image',
+              type: 'boolean',
+              description: 'Set as primary product image',
+              initialValue: false
             }
           ]
         }
       ],
-      validation: (rule: Rule) => rule.min(1).required(),
+      validation: (rule: Rule) => rule.min(1).required().custom((images: any[]) => {
+        const primaryImages = images?.filter(img => img.isPrimary);
+        if (!primaryImages || primaryImages.length === 0) {
+          return 'At least one image must be set as primary';
+        }
+        if (primaryImages.length > 1) {
+          return 'Only one image can be set as primary';
+        }
+        return true;
+      })
     },
     {
-      name: 'discount',
-      title: 'Discount Percentage',
+      name: 'regularDiscount',
+      title: 'Regular Product Discount',
       type: 'number',
+      description: 'Product-specific discount percentage (0-100)',
+      validation: (Rule: Rule) => Rule.min(0).max(100),
+      initialValue: 0
     },
     {
       name: 'promoCode',
       title: 'Promotion Code',
       type: 'string',
+      description: 'Code for cart-wide discount',
+      validation: (Rule: Rule) => Rule.custom((promoCode: string, context: any) => {
+        if (context.document.promoDiscount && !promoCode) {
+          return 'Promo code is required when promo discount is set';
+        }
+        return true;
+      })
+    },
+    {
+      name: 'promoDiscount',
+      title: 'Promotion Discount',
+      type: 'number',
+      description: 'Cart-wide discount percentage (0-100) when promo code is used',
+      validation: (Rule: Rule) => Rule.min(0).max(100).custom((promoDiscount: number, context: any) => {
+        if (promoDiscount && !context.document.promoCode) {
+          return 'Promo code is required when setting a promo discount';
+        }
+        return true;
+      }),
+      initialValue: 0
     },
     {
       name: 'promoExpiry',
       title: 'Promotion Expiry Date',
       type: 'datetime',
-    },
-    {
-      name: 'regularDiscount',
-      title: 'Regular Discount',
-      type: 'number',
-      description: 'Regular discount percentage (0-100)',
-      validation: (Rule: any) => Rule.min(0).max(100)
+      description: 'When this promo code expires',
+      validation: (Rule: Rule) => Rule.custom((promoExpiry: string, context: any) => {
+        if (context.document.promoCode && !promoExpiry) {
+          return 'Expiry date is required when promo code is set';
+        }
+        return true;
+      })
     },
   ],
   preview: {
@@ -176,4 +232,11 @@ export default {
       media: 'image',
     },
   },
+  hooks: {
+    async beforeSave(doc: any) {
+      // Update inStock based on stockQuantity
+      doc.inStock = doc.stockQuantity > 0;
+      return doc;
+    }
+  }
 }; 

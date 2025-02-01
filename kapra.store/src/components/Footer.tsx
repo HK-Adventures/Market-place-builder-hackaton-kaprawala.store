@@ -27,8 +27,10 @@ export default function Footer() {
             <ul className="space-y-2 text-gray-400">
               {[
                 { text: 'Contact Us', href: '/contact' },
-                { text: 'Shipping Policy', href: '#' },
-                { text: 'Returns & Exchanges', href: '#' },
+                { text: 'Shipping Policy', href: '/shipping-policy' },
+                { text: 'Returns & Exchanges', href: '/return-policy' },
+                { text: 'Privacy Policy', href: '/privacy-policy' },
+                { text: 'Terms & Conditions', href: '/terms' },
                 { text: 'FAQs', href: '/faqs' }
               ].map((item) => (
                 <li key={item.text} className="hover:text-white cursor-pointer transition-colors">
@@ -41,6 +43,10 @@ export default function Footer() {
             <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
             <ul className="space-y-2 text-gray-400">
               {[
+                { text: 'Home', href: '/' },
+                { text: 'Products', href: '/products' },
+                { text: 'About Us', href: '/about' },
+                { text: 'Contact', href: '/contact' },
                 { text: 'Size Guide', href: '/size-guide' },
                 { text: 'Store Locator', href: '/store-locator' },
                 { text: 'Careers', href: '/careers' }

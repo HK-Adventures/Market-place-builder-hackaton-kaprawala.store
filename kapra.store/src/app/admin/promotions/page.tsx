@@ -7,11 +7,11 @@ import { useRouter } from 'next/navigation';
 interface Product {
   _id: string;
   name: string;
-  promoCode?: string;
-  discount?: number;
-  promoExpiry?: string;
-  regularDiscount?: number;
   price: number;
+  regularDiscount?: number;  // Product-specific discount
+  promoCode?: string;       // Promo code for cart-wide discount
+  promoDiscount?: number;   // Discount % when promo code is used
+  promoExpiry?: string;     // Promo code expiry
 }
 
 interface PendingChanges {
@@ -27,7 +27,7 @@ export default function AdminPromotions() {
   const [products, setProducts] = useState<Product[]>([]);
   const [pendingChanges, setPendingChanges] = useState<PendingChanges>({});
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState<string | null>(null);
+  const [isSaving, setSaving] = useState<string | null>(null);
   const { isAdmin, isLoading } = useAuth();
   const router = useRouter();
 
@@ -41,16 +41,17 @@ export default function AdminPromotions() {
 
   const fetchProducts = async () => {
     try {
-      const data = await client.fetch(`*[_type == "product"]{
-        _id,
-        name,
-        price,
-        promoCode,
-        discount,
-        promoExpiry,
-        regularDiscount,
-        "price": coalesce(price, 0)
-      }`);
+      const data = await client.fetch(`
+        *[_type == "product"] {
+          _id,
+          name,
+          price,
+          regularDiscount,
+          promoCode,
+          promoDiscount,
+          promoExpiry
+        } | order(name asc)
+      `);
       setProducts(data);
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -79,7 +80,7 @@ export default function AdminPromotions() {
         .patch(productId)
         .set({
           promoCode: updates.promoCode || null,
-          discount: updates.discount || null,
+          promoDiscount: updates.promoDiscount || null,
           promoExpiry: updates.promoExpiry || null,
           regularDiscount: updates.regularDiscount || null,
         })
@@ -106,13 +107,13 @@ export default function AdminPromotions() {
   };
 
   const handleRemoveDiscounts = async (productId: string) => {
-    if (!confirm('Are you sure you want to remove all discounts?')) return;
+    if (!confirm('Are you sure you want to remove all discounts from this product?')) return;
 
     setSaving(productId);
     try {
       await client
         .patch(productId)
-        .unset(['promoCode', 'discount', 'promoExpiry', 'regularDiscount'])
+        .unset(['promoCode', 'promoDiscount', 'promoExpiry', 'regularDiscount'])
         .commit();
       
       setProducts(products.map(product => 
@@ -120,152 +121,162 @@ export default function AdminPromotions() {
           ? {
               ...product,
               promoCode: undefined,
-              discount: undefined,
+              promoDiscount: undefined,
               promoExpiry: undefined,
               regularDiscount: undefined
             }
           : product
       ));
 
-      setPendingChanges(prev => {
-        const newChanges = { ...prev };
-        delete newChanges[productId];
-        return newChanges;
-      });
-
     } catch (error) {
       console.error('Error removing discounts:', error);
-      alert('Failed to remove discounts. Please try again.');
+      alert('Failed to remove discounts');
     } finally {
       setSaving(null);
     }
   };
 
-  const calculateFinalPrice = (product: Product, pending?: Partial<Product>) => {
-    if (typeof product.price !== 'number') {
-      return '0.00';
+  const handleDeleteProduct = async (productId: string) => {
+    if (!confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
+      return;
     }
 
+    setSaving(productId);
+    try {
+      await client.delete(productId);
+      setProducts(products.filter(p => p._id !== productId));
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      alert('Failed to delete product');
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const calculateFinalPrice = (product: Product) => {
     const basePrice = product.price;
-    const regularDiscount = pending?.regularDiscount ?? product.regularDiscount ?? 0;
-    const promoDiscount = pending?.discount ?? product.discount ?? 0;
     
-    let finalPrice = basePrice;
-    
-    if (regularDiscount && regularDiscount > 0) {
-      finalPrice = finalPrice * (1 - regularDiscount / 100);
+    // Apply regular product discount first
+    let discountedPrice = basePrice;
+    if (product.regularDiscount) {
+      discountedPrice *= (1 - product.regularDiscount / 100);
     }
     
-    if (promoDiscount && promoDiscount > 0) {
-      finalPrice = finalPrice * (1 - promoDiscount / 100);
+    // Apply promo discount if code exists and not expired
+    if (product.promoCode && product.promoDiscount) {
+      const expiryDate = product.promoExpiry ? new Date(product.promoExpiry) : null;
+      if (!expiryDate || expiryDate > new Date()) {
+        discountedPrice *= (1 - product.promoDiscount / 100);
+      }
     }
     
-    finalPrice = Math.max(0, finalPrice);
-    
-    return finalPrice.toFixed(2);
+    return Math.max(0, discountedPrice).toFixed(2);
   };
 
   if (loading) return <div>Loading...</div>;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Manage Discounts & Promotions</h1>
-      
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
+    <div className="container-fluid px-2 py-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Promotions</h1>
+        <button
+          onClick={() => {/* your create promotion handler */}}
+          className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800"
+        >
+          Create Promotion
+        </button>
+      </div>
+
+      <div className="bg-white rounded-lg shadow">
+        <table className="w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Original Price</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Regular Discount (%)</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Promo Code</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Promo Discount (%)</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Final Price</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th className="px-3 py-3 text-left text-sm font-medium text-gray-500">Product</th>
+              <th className="px-3 py-3 text-left text-sm font-medium text-gray-500">Base Price</th>
+              <th className="px-3 py-3 text-left text-sm font-medium text-gray-500">Regular Discount</th>
+              <th className="px-3 py-3 text-left text-sm font-medium text-gray-500">Promo Code</th>
+              <th className="px-3 py-3 text-left text-sm font-medium text-gray-500">Promo Discount</th>
+              <th className="px-3 py-3 text-left text-sm font-medium text-gray-500">Promo Expiry</th>
+              <th className="px-3 py-3 text-left text-sm font-medium text-gray-500">Final Price</th>
+              <th className="px-3 py-3 text-left text-sm font-medium text-gray-500">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {products.map((product) => {
               const pending = pendingChanges[product._id];
               const hasChanges = !!pending;
-              const isSaving = saving === product._id;
 
               return (
                 <tr key={product._id}>
-                  <td className="px-6 py-4 whitespace-nowrap">{product.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">PKR {typeof product.price === 'number' ? product.price.toLocaleString() : '0'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-4 whitespace-nowrap">{product.name}</td>
+                  <td className="px-3 py-4 whitespace-nowrap">PKR {typeof product.price === 'number' ? product.price.toLocaleString() : '0'}</td>
+                  <td className="px-3 py-4 whitespace-nowrap">
                     <input
                       type="number"
                       value={pending?.regularDiscount ?? product.regularDiscount ?? ''}
-                      onChange={(e) => {
-                        const value = e.target.value ? Number(e.target.value) : undefined;
-                        handleChange(product._id, { regularDiscount: value });
-                      }}
+                      onChange={(e) => handleChange(product._id, { regularDiscount: parseFloat(e.target.value) })}
                       className="border rounded px-2 py-1 w-20"
                       min="0"
                       max="100"
                       placeholder="0"
-                      disabled={isSaving}
+                      disabled={isSaving === product._id}
                     />
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-4 whitespace-nowrap">
                     <input
                       type="text"
                       value={pending?.promoCode ?? product.promoCode ?? ''}
                       onChange={(e) => handleChange(product._id, { promoCode: e.target.value })}
                       className="border rounded px-2 py-1"
                       placeholder="Enter code"
-                      disabled={isSaving}
+                      disabled={isSaving === product._id}
                     />
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-4 whitespace-nowrap">
                     <input
                       type="number"
                       value={pending?.discount ?? product.discount ?? ''}
-                      onChange={(e) => {
-                        const value = e.target.value ? Number(e.target.value) : undefined;
-                        handleChange(product._id, { discount: value });
-                      }}
+                      onChange={(e) => handleChange(product._id, { discount: parseFloat(e.target.value) })}
                       className="border rounded px-2 py-1 w-20"
                       min="0"
                       max="100"
                       placeholder="0"
-                      disabled={isSaving}
+                      disabled={isSaving === product._id}
                     />
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-4 whitespace-nowrap">
                     <input
                       type="datetime-local"
                       value={(pending?.promoExpiry ?? product.promoExpiry ?? '').split('.')[0]}
                       onChange={(e) => handleChange(product._id, { promoExpiry: e.target.value })}
                       className="border rounded px-2 py-1"
-                      disabled={isSaving}
+                      disabled={isSaving === product._id}
                     />
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap font-medium">
-                    PKR {calculateFinalPrice(product, pending).toLocaleString()}
+                  <td className="px-3 py-4 whitespace-nowrap font-medium">
+                    PKR {calculateFinalPrice(product).toLocaleString()}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap space-x-2">
-                    {hasChanges && (
-                      <button
-                        onClick={() => handleConfirmChanges(product._id)}
-                        disabled={isSaving}
-                        className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 disabled:bg-green-300"
-                      >
-                        {isSaving ? 'Saving...' : 'Confirm'}
-                      </button>
-                    )}
-                    {(product.regularDiscount || product.promoCode || product.discount) && (
-                      <button
-                        onClick={() => handleRemoveDiscounts(product._id)}
-                        disabled={isSaving}
-                        className="text-red-600 hover:text-red-800 disabled:text-red-300 ml-2"
-                      >
-                        Remove All
-                      </button>
-                    )}
+                  <td className="px-3 py-4 whitespace-nowrap">
+                    <div className="flex items-center space-x-2">
+                      {pendingChanges[product._id] && (
+                        <button
+                          onClick={() => handleConfirmChanges(product._id)}
+                          disabled={isSaving === product._id}
+                          className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 disabled:bg-green-300"
+                        >
+                          {isSaving === product._id ? 'Saving...' : 'Save'}
+                        </button>
+                      )}
+                      {(product.regularDiscount || product.promoCode || product.promoDiscount) && (
+                        <button
+                          onClick={() => handleRemoveDiscounts(product._id)}
+                          disabled={isSaving === product._id}
+                          className="text-red-600 hover:text-red-800 disabled:text-red-300"
+                        >
+                          Remove Discounts
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );

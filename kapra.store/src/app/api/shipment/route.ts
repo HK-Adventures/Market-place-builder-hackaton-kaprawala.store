@@ -3,9 +3,13 @@ import { client } from '../../../sanity/client';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 
+const AFTERSHIP_API_KEY = process.env.AFTERSHIP_API_KEY;
+const AFTERSHIP_API_URL = 'https://api.aftership.com/v4';
+
 export async function POST(request: Request) {
   const headers = {
     'Content-Type': 'application/json',
+    'aftership-api-key': AFTERSHIP_API_KEY!
   };
 
   try {
@@ -24,112 +28,92 @@ export async function POST(request: Request) {
 
     // Verify admin user
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
+    if (authError || !user || user.email !== process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401, headers }
       );
     }
 
-    // Verify if user is admin
-    const isAdmin = user.email === process.env.ADMIN_EMAIL;
-    if (!isAdmin) {
-      return NextResponse.json(
-        { error: 'Unauthorized - Admin access required' },
-        { status: 403, headers }
-      );
+    const { orderId, trackingNumber, courier = 'pakistan-post' } = await request.json();
+
+    // Create tracking in AfterShip
+    const trackingResponse = await fetch(`${AFTERSHIP_API_URL}/trackings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'aftership-api-key': AFTERSHIP_API_KEY!
+      },
+      body: JSON.stringify({
+        tracking: {
+          tracking_number: trackingNumber,
+          slug: courier,
+          title: `Order ${orderId}`,
+          order_id: orderId
+        }
+      })
+    });
+
+    if (!trackingResponse.ok) {
+      throw new Error('Failed to create tracking in AfterShip');
     }
 
-    const { orderId, trackingNumber, courier = '17track' } = await request.json();
-
-    if (!orderId || !trackingNumber) {
-      return NextResponse.json(
-        { error: 'Order ID and tracking number are required' },
-        { status: 400, headers }
-      );
-    }
-
-    // Update order with tracking information
+    // Update order in Sanity
     await client
       .patch(orderId)
       .set({
-        status: 'processing',
+        status: 'shipped',
         tracking: {
-          courier,
           trackingNumber,
+          courier,
           shippedAt: new Date().toISOString()
         }
       })
       .commit();
 
-    // Optional: Send shipping notification email to customer
-    const order = await client.fetch(
-      `*[_type == "order" && _id == $orderId][0]{
-        customerInfo,
-        orderId
-      }`,
-      { orderId }
-    );
-
-    // You can add email notification logic here
-    // await sendShippingNotification(order.customerInfo.email, {
-    //   trackingNumber,
-    //   orderNumber: order.orderId,
-    //   customerName: order.customerInfo.fullName
-    // });
-
-    return NextResponse.json(
-      { success: true, message: 'Shipment information updated successfully' },
-      { headers }
-    );
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error updating shipment:', error);
+    console.error('Error creating shipment:', error);
     return NextResponse.json(
-      { error: 'Failed to update shipment information' },
-      { status: 500, headers }
+      { error: 'Failed to create shipment' },
+      { status: 500 }
     );
   }
 }
 
-// GET endpoint to fetch shipment details
 export async function GET(request: Request) {
-  const headers = {
-    'Content-Type': 'application/json',
-  };
-
   try {
     const { searchParams } = new URL(request.url);
-    const orderId = searchParams.get('orderId');
+    const trackingNumber = searchParams.get('tracking_number');
+    const courier = searchParams.get('courier') || 'pakistan-post';
 
-    if (!orderId) {
+    if (!trackingNumber) {
       return NextResponse.json(
-        { error: 'Order ID is required' },
-        { status: 400, headers }
+        { error: 'Tracking number is required' },
+        { status: 400 }
       );
     }
 
-    const order = await client.fetch(
-      `*[_type == "order" && _id == $orderId][0]{
-        tracking,
-        status,
-        orderId
-      }`,
-      { orderId }
+    const response = await fetch(
+      `${AFTERSHIP_API_URL}/trackings/${courier}/${trackingNumber}`,
+      {
+        headers: {
+          'aftership-api-key': AFTERSHIP_API_KEY!
+        }
+      }
     );
 
-    if (!order) {
-      return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 404, headers }
-      );
+    if (!response.ok) {
+      throw new Error('Failed to fetch tracking information');
     }
 
-    return NextResponse.json(order, { headers });
+    const data = await response.json();
+    return NextResponse.json(data);
   } catch (error) {
-    console.error('Error fetching shipment:', error);
+    console.error('Error fetching tracking:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch shipment information' },
-      { status: 500, headers }
+      { error: 'Failed to fetch tracking information' },
+      { status: 500 }
     );
   }
 } 
