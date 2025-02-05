@@ -6,10 +6,8 @@ export default function StudioLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body>
-        <div suppressHydrationWarning>{children}</div>
-      </body>
-    </html>
+    <div className="h-screen">
+      {children}
+    </div>
   );
 } 

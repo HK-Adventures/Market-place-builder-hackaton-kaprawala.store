@@ -123,128 +123,94 @@ export default function ProductsPage() {
   if (loading) return <div>Loading...</div>;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Products Management</h1>
-        <div className="flex space-x-4">
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 sm:mb-12">
+        <h1 className="text-xl sm:text-2xl font-semibold">Products</h1>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full sm:w-auto">
           <input
             type="text"
             placeholder="Search products..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto"
           />
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="all">All Categories</option>
-            {categories.map((category) => (
-              <option key={category._id} value={category.name}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-          <Link
-            href="/admin/products/new"
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+          <Link 
+            href="/studio/desk/product;new" 
+            className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 text-center"
           >
             Add New Product
           </Link>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Product
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Category
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Price
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Stock Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+      <div className="mb-8 w-full sm:w-48">
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="all">All Categories</option>
+          {categories.map((category) => (
+            <option key={category._id} value={category._id}>
+              {category.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-lg overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+              <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+              <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+              <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock Status</th>
+              <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filteredProducts.map((product) => (
+              <tr key={product._id}>
+                <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                  <div className="sm:hidden text-xs text-gray-500 mt-1">{product.category?.name}</div>
+                </td>
+                <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-500">{product.category?.name}</div>
+                </td>
+                <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">PKR {product.price.toLocaleString()}</div>
+                </td>
+                <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    product.stockQuantity > 0 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {product.stockQuantity > 0 ? 'In Stock' : 'Out of Stock'}
+                  </span>
+                </td>
+                <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <div className="flex gap-4">
+                    <Link 
+                      href={`/studio/desk/product;${product._id}`}
+                      className="text-indigo-600 hover:text-indigo-900"
+                    >
+                      Edit
+                    </Link>
+                    <button
+                      onClick={() => handleDeleteProduct(product._id)}
+                      className="text-red-600 hover:text-red-900"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </td>
               </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredProducts.map((product) => {
-                const isOutOfStock = !product.stockQuantity || product.stockQuantity <= 0;
-                
-                return (
-                  <tr key={product._id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="h-10 w-10 flex-shrink-0">
-                          {product.images?.[0] && (
-                            <img
-                              className="h-10 w-10 rounded-full object-cover"
-                              src={urlFor(product.images[0]).width(40).height(40).url()}
-                              alt={product.name}
-                            />
-                          )}
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {product.name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            SKU: {product.sku}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {product.category?.name}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        PKR {product.price.toLocaleString()}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
-                        ${isOutOfStock 
-                          ? 'bg-red-100 text-red-800' 
-                          : 'bg-green-100 text-green-800'}`}
-                      >
-                        {isOutOfStock 
-                          ? 'Out of Stock' 
-                          : `In Stock (${product.stockQuantity})`}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Link
-                        href={`/admin/products/edit/${product._id}`}
-                        className="text-blue-600 hover:text-blue-900 mr-4"
-                      >
-                        Edit
-                      </Link>
-                      <button
-                        onClick={() => handleDeleteProduct(product._id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

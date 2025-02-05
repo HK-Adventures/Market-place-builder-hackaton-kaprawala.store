@@ -13,7 +13,7 @@ interface Product {
     name: string;
   };
   description?: string;
-  stockQuantity?: number;
+  stockQuantity: number;
 }
 
 export default function ProductsPage() {
@@ -26,7 +26,7 @@ export default function ProductsPage() {
     const fetchData = async () => {
       try {
         // Fetch products with proper category reference
-        const productsQuery = `*[_type == "product"] {
+        const productsQuery = `*[_type == "product" && defined(category)] {
           _id,
           name,
           price,
@@ -37,7 +37,7 @@ export default function ProductsPage() {
             _id,
             name
           }
-        }`;
+        } | order(_createdAt desc)`;
 
         // Fetch only active categories
         const categoriesQuery = `*[_type == "category" && isActive != false] {
@@ -65,7 +65,7 @@ export default function ProductsPage() {
   // Filter products based on selected category
   const filteredProducts = selectedCategory === 'all'
     ? products
-    : products.filter(product => product.category?._id === selectedCategory);
+    : products.filter(product => product.category && product.category._id === selectedCategory);
 
   if (loading) {
     return (

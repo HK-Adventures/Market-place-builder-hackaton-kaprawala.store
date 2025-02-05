@@ -1,8 +1,8 @@
 import React from 'react';
 import { CartProvider } from '../context/CartContext';
 import { AuthProvider } from '../context/AuthContext';
-import Navbar from '@/components/NavBar';
-import Footer from '@/components/Footer';
+import Navbar from '../components/NavBar';
+import Footer from '../components/Footer';
 import './globals.css';
 
 export default function RootLayout({
@@ -16,7 +16,9 @@ export default function RootLayout({
         <AuthProvider>
           <CartProvider>
             <Navbar />
-            <main className="min-h-screen">{children}</main>
+            <div className="min-h-screen">
+              {children}
+            </div>
             <Footer />
           </CartProvider>
         </AuthProvider>

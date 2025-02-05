@@ -47,7 +47,7 @@ export default function CategoryProducts({ categoryName }: CategoryProductsProps
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const query = `*[_type == "product" && lower(category->name) == lower($categoryName)] {
+        const query = `*[_type == "product" && defined(category) && category->name match $categoryPattern] {
           _id,
           name,
           price,
@@ -61,11 +61,11 @@ export default function CategoryProducts({ categoryName }: CategoryProductsProps
           }
         }`;
 
+        // Create a case-insensitive pattern for matching
+        const categoryPattern = `(?i)^${categoryName}$`;
         console.log('Fetching products for category:', categoryName);
-        const productsData = await client.fetch(query, { 
-          categoryName: categoryName.toLowerCase() 
-        });
-        console.log('Fetched products with stock:', productsData);
+        const productsData = await client.fetch(query, { categoryPattern });
+        console.log('Fetched products:', productsData);
 
         setProducts(productsData);
         setFilteredProducts(productsData);

@@ -1,6 +1,6 @@
-import { Rule } from '@sanity/types';
+import { defineType } from 'sanity'
 
-export default {
+export default defineType({
   name: 'category',
   title: 'Category',
   type: 'document',
@@ -9,7 +9,7 @@ export default {
       name: 'name',
       title: 'Name',
       type: 'string',
-      validation: (rule: Rule) => rule.required()
+      validation: (rule: any) => rule.required()
     },
     {
       name: 'slug',
@@ -17,20 +17,15 @@ export default {
       type: 'slug',
       options: {
         source: 'name',
-        maxLength: 96,
-        slugify: (input: string) => input
-          .toLowerCase()
-          .replace(/\s+/g, '-')
-          .slice(0, 96)
+        maxLength: 96
       },
-      validation: (rule: Rule) => rule.required()
+      validation: (rule: any) => rule.required()
     },
     {
       name: 'isActive',
       title: 'Active',
       type: 'boolean',
-      initialValue: true,
-      description: 'Inactive categories will not be shown in the store'
+      initialValue: true
     }
   ],
   preview: {
@@ -38,4 +33,4 @@ export default {
       title: 'name'
     }
   }
-} 
+}) 
