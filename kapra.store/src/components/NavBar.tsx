@@ -7,6 +7,7 @@ import SearchBar from './SearchBar';
 import { Menu } from '@headlessui/react';
 import { supabase } from '../lib/supabase';
 import { useRouter } from 'next/navigation';
+import { FiUser } from 'react-icons/fi';
 
 // Add User interface
 interface User {
@@ -18,32 +19,51 @@ export default function NavBar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { cartItems } = useCart();
   const [userState, setUserState] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
   
   useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      setUserState(session?.user ? {
-        id: session.user.id,
-        email: session.user.email || null
-      } : null);
-    });
+    const checkAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setUserState(session?.user ? {
+          id: session.user.id,
+          email: session.user.email || null
+        } : null);
+      } catch (error) {
+        console.error('Auth check error:', error);
+        setUserState(null);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    // Check current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUserState(session?.user ? {
-        id: session.user.id,
-        email: session.user.email || null
-      } : null);
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        setUserState(session?.user ? {
+          id: session.user.id,
+          email: session.user.email || null
+        } : null);
+      } else if (event === 'SIGNED_OUT') {
+        setUserState(null);
+      }
     });
 
     return () => {
-      authListener?.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/');
+    try {
+      await supabase.auth.signOut();
+      setUserState(null);
+      router.push('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   const navLinks = [
@@ -119,71 +139,103 @@ export default function NavBar() {
             </Link>
           </div>
 
-          {/* Search, Cart, and User Menu - Hidden on mobile */}
-          <div className="hidden md:flex items-center space-x-4">
+          {/* Search, Cart, and Profile */}
+          <div className="flex items-center space-x-4">
             <SearchBar />
-            <Link href="/cart" className="text-gray-700 hover:text-gray-900 relative">
-              <span className="sr-only">Cart</span>
-              <svg className="h-6 w-6" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
-              </svg>
-              {cartItems.length > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  {cartItems.length}
-                </span>
-              )}
-            </Link>
-            <Menu as="div" className="relative">
-              <Menu.Button className="flex items-center text-[#333333] hover:text-[#1A1A1A]">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            
+            <Link href="/cart" className="text-gray-700 hover:text-gray-900">
+              <span className="relative inline-block">
+                <svg className="w-6 h-6" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                  <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
                 </svg>
+                {cartItems.length > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {cartItems.length}
+                  </span>
+                )}
+              </span>
+            </Link>
+
+            {/* Profile Dropdown */}
+            <Menu as="div" className="relative">
+              <Menu.Button className="flex items-center text-gray-700 hover:text-gray-900">
+                <FiUser className="w-6 h-6" />
               </Menu.Button>
 
-              <Menu.Items className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1">
+              <Menu.Items className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
                 {userState ? (
                   <>
-                    <div className="px-4 py-2 text-sm text-gray-700 border-b border-gray-100">
-                      {userState.email}
-                    </div>
                     <Menu.Item>
-                      <Link 
-                        href="/my-orders" 
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        My Orders
-                      </Link>
+                      {({ active }) => (
+                        <div className="px-4 py-2 text-sm text-gray-700 border-b">
+                          <p className="font-medium">{userState.email}</p>
+                        </div>
+                      )}
+                    </Menu.Item>
+                    <Menu.Item>
+                      {({ active }) => (
+                        <Link
+                          href="/my-orders"
+                          className={`block px-4 py-2 text-sm ${
+                            active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
+                          }`}
+                        >
+                          My Orders
+                        </Link>
+                      )}
                     </Menu.Item>
                     {userState.email?.toLowerCase() === process.env.NEXT_PUBLIC_ADMIN_EMAIL?.toLowerCase() && (
                       <Menu.Item>
-                        <Link 
-                          href="/admin" 
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        >
-                          Admin Dashboard
-                        </Link>
+                        {({ active }) => (
+                          <Link
+                            href="/admin"
+                            className={`block px-4 py-2 text-sm ${
+                              active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
+                            }`}
+                          >
+                            Admin Dashboard
+                          </Link>
+                        )}
                       </Menu.Item>
                     )}
                     <Menu.Item>
-                      <button
-                        onClick={handleLogout}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Logout
-                      </button>
+                      {({ active }) => (
+                        <button
+                          onClick={handleLogout}
+                          className={`block w-full text-left px-4 py-2 text-sm ${
+                            active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
+                          }`}
+                        >
+                          Logout
+                        </button>
+                      )}
                     </Menu.Item>
                   </>
                 ) : (
                   <>
                     <Menu.Item>
-                      <Link href="/login" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                        Login
-                      </Link>
+                      {({ active }) => (
+                        <Link
+                          href="/login"
+                          className={`block px-4 py-2 text-sm ${
+                            active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
+                          }`}
+                        >
+                          Login
+                        </Link>
+                      )}
                     </Menu.Item>
                     <Menu.Item>
-                      <Link href="/register" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                        Register
-                      </Link>
+                      {({ active }) => (
+                        <Link
+                          href="/register"
+                          className={`block px-4 py-2 text-sm ${
+                            active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
+                          }`}
+                        >
+                          Register
+                        </Link>
+                      )}
                     </Menu.Item>
                   </>
                 )}

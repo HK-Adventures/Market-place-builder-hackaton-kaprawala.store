@@ -10,33 +10,13 @@ import Link from 'next/link';
 interface Product {
   _id: string;
   name: string;
-  slug: string;
-  price: number;
-  description: string;
+  regularPrice: number | null;
+  salePrice?: number | null;
+  stockQuantity: number;
   category: {
-    _id: string;
     name: string;
   };
-  mainImage: {
-    asset: {
-      _ref: string;
-    };
-  };
-  image: any;
-  images: Array<{
-    _key: string;
-    asset: {
-      _ref: string;
-      _type: 'reference';
-    };
-  }>;
-  inStock: boolean;
-  stockQuantity: number;
-  sku: string;
-  filters: {
-    size: string[];
-    color: string[];
-  };
+  images: any[];
 }
 
 interface Category {
@@ -60,18 +40,18 @@ export default function ProductsPage() {
 
   const fetchProducts = async () => {
     try {
-      const query = `*[_type == "product"] | order(name asc) {
-        _id,
-        name,
-        price,
-        stockQuantity,
-        "category": category->{
-          name
-        },
-        images
-      }`;
-      const data = await client.fetch(query);
-      setProducts(data);
+      const products = await client.fetch(`
+        *[_type == "product"] {
+          _id,
+          name,
+          regularPrice,
+          salePrice,
+          stockQuantity,
+          "category": category->{name},
+          images
+        }
+      `);
+      setProducts(products);
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
@@ -110,15 +90,17 @@ export default function ProductsPage() {
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch = (
       (product.name?.toLowerCase() || '').includes(searchLower) ||
-      (product.description?.toLowerCase() || '').includes(searchLower) ||
-      (product.category?.name?.toLowerCase() || '').includes(searchLower) ||
-      (product.sku?.toLowerCase() || '').includes(searchLower)
+      (product.category?.name?.toLowerCase() || '').includes(searchLower)
     );
 
     const matchesCategory = categoryFilter === 'all' || product.category?.name === categoryFilter;
 
     return matchesSearch && matchesCategory;
   });
+
+  const formatPrice = (price: number | null | undefined) => {
+    return price ? price.toLocaleString() : '0';
+  };
 
   if (loading) return <div>Loading...</div>;
 
@@ -165,7 +147,7 @@ export default function ProductsPage() {
               <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
               <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
               <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-              <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock Status</th>
+              <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock Status</th>
               <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
@@ -180,16 +162,21 @@ export default function ProductsPage() {
                   <div className="text-sm text-gray-500">{product.category?.name}</div>
                 </td>
                 <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">PKR {product.price.toLocaleString()}</div>
+                  <div className="text-sm text-gray-900">
+                    {product.salePrice ? (
+                      <>
+                        <span className="text-red-600">PKR {formatPrice(product.salePrice)}</span>
+                        <span className="text-gray-500 line-through ml-2">
+                          PKR {formatPrice(product.regularPrice)}
+                        </span>
+                      </>
+                    ) : (
+                      <span>PKR {formatPrice(product.regularPrice)}</span>
+                    )}
+                  </div>
                 </td>
-                <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    product.stockQuantity > 0 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {product.stockQuantity > 0 ? 'In Stock' : 'Out of Stock'}
-                  </span>
+                <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">{product.stockQuantity}</div>
                 </td>
                 <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex gap-4">

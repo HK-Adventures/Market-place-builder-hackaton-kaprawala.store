@@ -18,7 +18,8 @@ export default defineType({
       options: {
         source: 'name',
         maxLength: 96
-      }
+      },
+      validation: (rule: any) => rule.required()
     },
     {
       name: 'description',
@@ -26,73 +27,31 @@ export default defineType({
       type: 'text'
     },
     {
-      name: 'price',
-      title: 'Price',
-      type: 'number',
-      validation: (rule: any) => rule.required().min(0)
-    },
-    {
-      name: 'mainImage',
-      title: 'Main Image',
-      type: 'image',
-      options: {
-        hotspot: true
-      }
-    },
-    {
       name: 'images',
-      title: 'Additional Images',
+      title: 'Images',
       type: 'array',
-      of: [{
-        type: 'image',
-        options: {
-          hotspot: true
-        }
-      }]
+      of: [{ type: 'image' }],
+      validation: (rule: any) => rule.required().min(1)
     },
     {
       name: 'category',
       title: 'Category',
       type: 'reference',
-      to: [{ type: 'category' }]
+      to: [{ type: 'category' }],
+      validation: (rule: any) => rule.required()
     },
     {
-      name: 'filters',
-      title: 'Filters',
-      type: 'object',
-      fields: [
-        {
-          name: 'sizes',
-          title: 'Available Sizes',
-          type: 'array',
-          of: [{ type: 'string' }],
-          options: {
-            list: [
-              {title: 'XS', value: 'XS'},
-              {title: 'S', value: 'S'},
-              {title: 'M', value: 'M'},
-              {title: 'L', value: 'L'},
-              {title: 'XL', value: 'XL'}
-            ]
-          }
-        },
-        {
-          name: 'colors',
-          title: 'Available Colors',
-          type: 'array',
-          of: [{ type: 'string' }],
-          options: {
-            list: [
-              {title: 'Black', value: 'Black'},
-              {title: 'White', value: 'White'},
-              {title: 'Blue', value: 'Blue'},
-              {title: 'Green', value: 'Green'},
-              {title: 'Gray', value: 'Gray'},
-              {title: 'Brown', value: 'Brown'}
-            ]
-          }
-        }
-      ]
+      name: 'regularPrice',
+      title: 'Regular Price',
+      type: 'number',
+      validation: (rule: any) => rule.required().positive()
+    },
+    {
+      name: 'salePrice',
+      title: 'Sale Price',
+      type: 'number',
+      validation: (rule: any) => rule.positive(),
+      description: 'Leave empty if not on sale'
     },
     {
       name: 'stockQuantity',
@@ -101,16 +60,109 @@ export default defineType({
       validation: (rule: any) => rule.required().min(0)
     },
     {
-      name: 'sku',
-      title: 'SKU',
-      type: 'string'
+      name: 'colors',
+      title: 'Available Colors',
+      type: 'array',
+      validation: (rule: any) => rule.min(0),
+      of: [{
+        type: 'object',
+        name: 'colorVariant',
+        fields: [
+          {
+            name: 'name',
+            title: 'Color Name',
+            type: 'string',
+            options: {
+              list: [
+                { title: 'Black', value: 'Black' },
+                { title: 'White', value: 'White' },
+                { title: 'Blue', value: 'Blue' },
+                { title: 'Red', value: 'Red' },
+                { title: 'Green', value: 'Green' },
+                { title: 'Yellow', value: 'Yellow' },
+                { title: 'Brown', value: 'Brown' },
+                { title: 'Gray', value: 'Gray' },
+                { title: 'Navy', value: 'Navy' },
+                { title: 'Beige', value: 'Beige' },
+                { title: 'Custom Color', value: 'custom' }
+              ]
+            }
+          },
+          {
+            name: 'customColorName',
+            title: 'Custom Color Name',
+            type: 'string',
+            hidden: ({ parent }: { parent: { name: string } }) => parent?.name !== 'custom'
+          },
+          {
+            name: 'stockQuantity',
+            title: 'Stock Quantity',
+            type: 'number',
+            validation: (rule: any) => rule.required().min(0)
+          }
+        ]
+      }]
+    },
+    {
+      name: 'sizes',
+      title: 'Available Sizes',
+      type: 'array',
+      of: [{
+        type: 'object',
+        fields: [
+          {
+            name: 'name',
+            title: 'Size Name',
+            type: 'string',
+            validation: (rule: any) => rule.required()
+          },
+          {
+            name: 'measurements',
+            title: 'Measurements',
+            type: 'string',
+            description: 'Optional measurements for this size'
+          },
+          {
+            name: 'stockQuantity',
+            title: 'Stock Quantity for this Size',
+            type: 'number',
+            validation: (rule: any) => rule.required().min(0)
+          }
+        ],
+        preview: {
+          select: {
+            title: 'name',
+            measurements: 'measurements',
+            stock: 'stockQuantity'
+          },
+          prepare({ title, measurements, stock }) {
+            return {
+              title: `${title} (${stock} in stock)`,
+              subtitle: measurements || ''
+            }
+          }
+        }
+      }]
+    },
+    {
+      name: 'isActive',
+      title: 'Active',
+      type: 'boolean',
+      initialValue: true
     }
   ],
   preview: {
     select: {
       title: 'name',
-      subtitle: 'category.name',
-      media: 'mainImage'
+      category: 'category.name',
+      media: 'images.0'
+    },
+    prepare({ title, category, media }) {
+      return {
+        title,
+        subtitle: category,
+        media
+      }
     }
   }
 }) 

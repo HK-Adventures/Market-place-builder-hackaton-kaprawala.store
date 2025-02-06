@@ -8,14 +8,29 @@ interface Product {
   _id: string;
   name: string;
   price: number;
+  regularPrice: number;
+  salePrice?: number;
   description: string;
   images: any[];
   category: {
     _id: string;
     name: string;
   };
+  categoryName?: string;
   stockQuantity: number;
   regularDiscount?: number;
+  sizes?: Array<{
+    name: string;
+    stockQuantity: number;
+  }>;
+  colors?: Array<{
+    name: string;
+    stockQuantity: number;
+  }>;
+  filters?: {
+    sizes: string[];
+    colors: string[];
+  };
 }
 
 interface CategoryProductsProps {
@@ -47,36 +62,40 @@ export default function CategoryProducts({ categoryName }: CategoryProductsProps
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const query = `*[_type == "product" && defined(category) && category->name match $categoryPattern] {
+        const query = `*[_type == "product" && lower(category->name) == lower($categoryName)] {
           _id,
           name,
           price,
+          regularPrice,
+          salePrice,
           description,
-          stockQuantity,
           images,
-          regularDiscount,
-          "category": category->{
-            _id,
-            name
+          category->,
+          stockQuantity,
+          "colors": colors[] {
+            "name": coalesce(customColorName, name),
+            stockQuantity
+          },
+          "sizes": sizes[] {
+            name,
+            stockQuantity
           }
         }`;
 
-        // Create a case-insensitive pattern for matching
-        const categoryPattern = `(?i)^${categoryName}$`;
-        console.log('Fetching products for category:', categoryName);
-        const productsData = await client.fetch(query, { categoryPattern });
-        console.log('Fetched products:', productsData);
-
-        setProducts(productsData);
-        setFilteredProducts(productsData);
+        const products = await client.fetch(query, { categoryName });
+        console.log('Raw product data:', JSON.stringify(products, null, 2));
+        setProducts(products);
+        setFilteredProducts(products);
+        setLoading(false);
       } catch (error) {
         console.error('Error fetching products:', error);
-      } finally {
         setLoading(false);
       }
     };
 
-    fetchProducts();
+    if (categoryName) {
+      fetchProducts();
+    }
   }, [categoryName]);
 
   const applyFilters = () => {
@@ -107,9 +126,6 @@ export default function CategoryProducts({ categoryName }: CategoryProductsProps
         break;
       case 'newest':
         filtered.sort((a, b) => new Date(b._id).getTime() - new Date(a._id).getTime());
-        break;
-      case 'discount':
-        filtered.sort((a, b) => (b.regularDiscount || 0) - (a.regularDiscount || 0));
         break;
     }
 
@@ -190,7 +206,6 @@ export default function CategoryProducts({ categoryName }: CategoryProductsProps
                   <option value="price-low">Price: Low to High</option>
                   <option value="price-high">Price: High to Low</option>
                   <option value="newest">Newest First</option>
-                  <option value="discount">Biggest Discount</option>
                 </select>
               </div>
 
@@ -229,7 +244,7 @@ export default function CategoryProducts({ categoryName }: CategoryProductsProps
           <p className="text-gray-600">No products found in this category.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
           {filteredProducts.map((product) => (
             <ProductCard key={product._id} product={product} />
           ))}

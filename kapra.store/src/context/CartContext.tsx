@@ -7,16 +7,11 @@ interface CartItem {
   _id: string;
   name: string;
   price: number;
+  image: any;
   quantity: number;
-  stockQuantity: number;
-  selectedColor?: string;
   selectedSize?: string;
-  image: {
-    asset: {
-      _ref: string;
-      _type: 'reference';
-    };
-  };
+  selectedColor?: string;
+  stockQuantity: number;
 }
 
 // Add Product interface
@@ -39,7 +34,7 @@ interface Product {
 interface CartContextType {
   cart: CartItem[];
   cartItems: CartItem[];
-  addToCart: (product: Product, quantity?: number, size?: string, color?: string) => void;
+  addToCart: (item: CartItem) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -101,42 +96,29 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
-  const addToCart = (product: Product, quantity = 1, size?: string, color?: string) => {
+  const addToCart = (item: CartItem) => {
     if (!isAuthenticated) {
       alert('Please log in to add items to cart');
       return;
     }
 
     setCart(prevCart => {
-      const existingItem = prevCart.find(item => 
-        item._id === product._id && 
-        item.selectedSize === size && 
-        item.selectedColor === color
-      );
+      const existingItem = prevCart.find(i => i._id === item._id && i.selectedSize === item.selectedSize && i.selectedColor === item.selectedColor);
 
       if (existingItem) {
         // Check if adding one more would exceed stock
-        if (existingItem.quantity >= product.stockQuantity) {
+        if (existingItem.quantity >= item.stockQuantity) {
           return prevCart;
         }
-        return prevCart.map(item =>
-          item._id === product._id && 
-          item.selectedSize === size && 
-          item.selectedColor === color
-            ? { ...item, quantity: Math.min(item.quantity + quantity, item.stockQuantity) }
-            : item
+        return prevCart.map(i =>
+          i._id === item._id && 
+          i.selectedSize === item.selectedSize && 
+          i.selectedColor === item.selectedColor
+            ? { ...i, quantity: Math.min(i.quantity + item.quantity, i.stockQuantity) }
+            : i
         );
       }
-      return [...prevCart, {
-        _id: product._id,
-        name: product.name,
-        price: product.price,
-        stockQuantity: product.stockQuantity,
-        image: product.image,
-        quantity,
-        selectedSize: size,
-        selectedColor: color
-      }];
+      return [...prevCart, { ...item }];
     });
   };
 

@@ -1,6 +1,8 @@
 // Mock shipping service for development
-const TRACKINGMORE_API_KEY = process.env.NEXT_PUBLIC_TRACKINGMORE_API_KEY;
-const TRACKINGMORE_API_URL = 'https://api.trackingmore.com/v4';
+const AFTERSHIP_API_KEY = process.env.NEXT_PUBLIC_AFTERSHIP_API_KEY;
+const AFTERSHIP_API_URL = 'https://api.aftership.com/v4';
+
+import { client } from '../sanity/client';
 
 interface ShippingLabel {
   trackingNumber: string;
@@ -8,6 +10,16 @@ interface ShippingLabel {
   estimatedDelivery: string;
   status: string;
   shippingCost: number;
+}
+
+interface CustomerInfo {
+  city: string;
+  postalCode: string;
+}
+
+interface CartItem {
+  quantity: number;
+  price: number;
 }
 
 interface ShippingRate {
@@ -36,143 +48,96 @@ interface TrackingRequest {
 }
 
 export const shippingService = {
-  async calculateShippingCost(orderData: {
-    customerInfo: {
-      city: string;
-      postalCode: string;
-    };
-    items: Array<{
-      quantity: number;
-    }>;
-  }): Promise<ShippingRate> {
+  calculateShippingCost: async ({ customerInfo, items }: { 
+    customerInfo: CustomerInfo, 
+    items: CartItem[] 
+  }): Promise<ShippingRate> => {
     try {
-      // First try the API
-      try {
-        const response = await fetch(`${TRACKINGMORE_API_URL}/rates/calculate`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Tracking-Api-Key': TRACKINGMORE_API_KEY!,
-            'Accept': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          },
-          body: JSON.stringify({
-            origin_country_code: 'PK',
-            origin_postal_code: '54000', // Lahore
-            destination_country_code: 'PK',
-            destination_postal_code: orderData.customerInfo.postalCode,
-            destination_city: orderData.customerInfo.city,
-            weight: 1.0, // in kg
-            length: 30, // in cm
-            width: 20,  // in cm
-            height: 10, // in cm
-            category: 'clothing',
-            declared_value: 100, // in USD
-            quantity: orderData.items.reduce((sum, item) => sum + item.quantity, 0)
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log('Shipping rate response:', data);
-
-        const standardRate = data.data.rates.find((rate: any) => 
-          rate.service_level === 'standard' || rate.service_level === 'regular'
-        ) || data.data.rates[0];
-
-        return {
-          cost: standardRate.total_charge,
-          currency: standardRate.currency,
-          estimatedDays: standardRate.estimated_days,
-          service: standardRate.service_level
-        };
-      } catch (apiError) {
-        console.error('API Error:', apiError);
-        throw apiError;
-      }
-    } catch (error) {
-      console.error('Error calculating shipping cost:', error);
-      // Return calculated cost based on distance and items
-      const baseRate = 150; // Base shipping rate in PKR
-      const itemsCount = orderData.items.reduce((sum, item) => sum + item.quantity, 0);
-      const itemRate = itemsCount * 20; // 20 PKR per item
-
-      // Calculate distance-based rate (simplified)
-      let distanceRate = 0;
-      const city = orderData.customerInfo.city.toLowerCase();
-      if (city === 'lahore') {
-        distanceRate = 50;
-      } else if (['karachi', 'islamabad', 'rawalpindi'].includes(city)) {
-        distanceRate = 200;
+      // Basic shipping calculation logic
+      const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+      const baseShippingCost = 200; // Base shipping cost in PKR
+      
+      // Calculate shipping cost based on city
+      let cityCost = 0;
+      const cityLower = customerInfo.city.toLowerCase();
+      
+      if (cityLower === 'karachi') {
+        cityCost = 100;
+      } else if (['lahore', 'islamabad', 'rawalpindi'].includes(cityLower)) {
+        cityCost = 200;
       } else {
-        distanceRate = 150;
+        cityCost = 300;
       }
 
-      const totalCost = baseRate + itemRate + distanceRate;
+      // Calculate final shipping cost
+      const shippingCost = baseShippingCost + cityCost + (totalItems - 1) * 50;
+
+      // Estimated delivery days based on city
+      let estimatedDays = 3;
+      if (cityLower === 'karachi') {
+        estimatedDays = 1;
+      } else if (['lahore', 'islamabad', 'rawalpindi'].includes(cityLower)) {
+        estimatedDays = 2;
+      }
 
       return {
-        cost: totalCost,
+        cost: shippingCost,
         currency: 'PKR',
-        estimatedDays: city === 'lahore' ? 1 : 3,
-        service: 'standard'
+        estimatedDays,
+        service: 'Standard Delivery'
+      };
+    } catch (error) {
+      console.error('Error calculating shipping:', error);
+      // Return default shipping rate if calculation fails
+      return {
+        cost: 300,
+        currency: 'PKR',
+        estimatedDays: 3,
+        service: 'Standard Delivery'
       };
     }
   },
 
-  async generateLabel(orderData: {
-    orderId: string;
-    customerInfo: {
-      fullName: string;
-      email: string;
-      phoneNumber: string;
-      address: string;
-      city: string;
-      postalCode: string;
-      country: string;
-    };
-    items: Array<any>;
-  }): Promise<ShippingLabel> {
+  async generateLabel(order: { _id: string; customerInfo: any; items: any[] }): Promise<string> {
     try {
-      // Generate tracking number via TrackingMore API
-      const response = await fetch(`${TRACKINGMORE_API_URL}/trackings/create`, {
+      const trackingNumber = `KS${Date.now().toString(36)}`;
+
+      // Create tracking in AfterShip
+      await fetch(`${AFTERSHIP_API_URL}/trackings`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Tracking-Api-Key': TRACKINGMORE_API_KEY!,
+          'aftership-api-key': AFTERSHIP_API_KEY!
         },
         body: JSON.stringify({
-          tracking_number: `KP${orderData.orderId}${Date.now().toString(36)}`,
-          carrier_code: 'pakistan-post',
-          title: `Order ${orderData.orderId}`,
-          customer_name: orderData.customerInfo.fullName,
-          customer_email: orderData.customerInfo.email,
-          customer_phone: orderData.customerInfo.phoneNumber,
-          destination_country: 'Pakistan',
-          destination_city: orderData.customerInfo.city,
-          destination_address: orderData.customerInfo.address
+          tracking: {
+            tracking_number: trackingNumber,
+            slug: 'tcs-pk', // TCS Pakistan courier
+            title: `Order ${order._id}`,
+            order_id: order._id,
+            customer_name: order.customerInfo.fullName,
+            emails: [order.customerInfo.email],
+            smses: [order.customerInfo.phoneNumber]
+          }
         })
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to generate tracking number');
-      }
+      // Update order with tracking info
+      await client
+        .patch(order._id)
+        .set({
+          tracking: {
+            trackingNumber,
+            courier: 'TCS',
+            shippedAt: new Date().toISOString()
+          }
+        })
+        .commit();
 
-      const data = await response.json();
-      const trackingNumber = data.data.tracking_number;
-
-      return {
-        trackingNumber,
-        labelUrl: `/shipping-label/${trackingNumber}`,
-        estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'ready',
-        shippingCost: await this.calculateShippingRate(orderData)
-      };
+      return trackingNumber;
     } catch (error) {
       console.error('Error generating shipping label:', error);
-      throw error;
+      throw new Error('Failed to generate shipping label');
     }
   },
 
@@ -259,8 +224,73 @@ export const shippingService = {
   },
 
   // Helper method to extract date from tracking number
-  private extractDateFromTracking(trackingNumber: string): number {
+  extractDateFromTracking(trackingNumber: string): number {
     const parts = trackingNumber.split('-');
     return parseInt(parts[2], 36);
+  }
+};
+
+export const generateTrackingNumber = () => {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+  
+  return `KS-${year}${month}${day}-${random}`;
+};
+
+export const generateShippingLabel = async (order: any) => {
+  try {
+    if (!order?._id) {
+      throw new Error('Invalid order data');
+    }
+
+    const trackingNumber = generateTrackingNumber();
+
+    // Create tracking in AfterShip
+    const aftershipResponse = await fetch(`${AFTERSHIP_API_URL}/trackings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'aftership-api-key': AFTERSHIP_API_KEY!
+      },
+      body: JSON.stringify({
+        tracking: {
+          tracking_number: trackingNumber,
+          slug: 'tcs-pk',
+          title: `Order ${order.orderId}`,
+          customer_name: order.customerInfo?.fullName || '',
+          emails: [order.customerInfo?.email || ''],
+          smses: [order.customerInfo?.phoneNumber || '']
+        }
+      })
+    });
+
+    if (!aftershipResponse.ok) {
+      throw new Error('Failed to create tracking in AfterShip');
+    }
+
+    // Update order in Sanity
+    const updatedOrder = await client
+      .patch(order._id)
+      .set({
+        tracking: {
+          _type: 'tracking',
+          trackingNumber: trackingNumber,
+          courier: 'TCS',
+          shippedAt: new Date().toISOString()
+        }
+      })
+      .commit();
+
+    if (!updatedOrder) {
+      throw new Error('Failed to update order with tracking info');
+    }
+
+    return trackingNumber;
+  } catch (error) {
+    console.error('Error generating shipping label:', error);
+    throw new Error('Failed to generate shipping label');
   }
 }; 

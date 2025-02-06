@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '../../context/CartContext';
 import { shippingService } from '../../lib/shippingService';
+import { client } from '../../sanity/client';
 
 interface ShippingInfo {
   fullName: string;
@@ -22,9 +23,58 @@ interface ShippingRate {
   service: string;
 }
 
+// Add promo code validation
+const validatePromoCode = async (code: string) => {
+  try {
+    console.log('Validating promo code:', code); // Debug log
+
+    const query = `*[_type == "promotion" && lower(code) == lower($code) && isActive == true][0] {
+      _id,
+      code,
+      discountType,
+      discountValue,
+      minPurchase,
+      startDate,
+      endDate,
+      hasUsageLimit,
+      usageLimit,
+      usageCount
+    }`;
+    
+    const promoCode = await client.fetch(query, { code: code.trim() });
+    console.log('Found promo code:', promoCode); // Debug log
+    
+    if (!promoCode) {
+      console.log('No promo code found'); // Debug log
+      return null;
+    }
+
+    // Check dates
+    const now = new Date();
+    const startDate = new Date(promoCode.startDate);
+    const endDate = new Date(promoCode.endDate);
+
+    if (now < startDate || now > endDate) {
+      console.log('Promo code is outside valid date range'); // Debug log
+      return null;
+    }
+
+    // Check usage limit
+    if (promoCode.hasUsageLimit && promoCode.usageCount >= promoCode.usageLimit) {
+      console.log('Promo code has reached usage limit'); // Debug log
+      return null;
+    }
+
+    return promoCode;
+  } catch (error) {
+    console.error('Error validating promo code:', error);
+    return null;
+  }
+};
+
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cart } = useCart();
+  const { cart, updateQuantity } = useCart();
   const [loading, setLoading] = useState(false);
   const [shippingRate, setShippingRate] = useState<ShippingRate | null>(null);
   const [shippingInfo, setShippingInfo] = useState<ShippingInfo>({
@@ -38,6 +88,11 @@ export default function CheckoutPage() {
     country: 'Pakistan'
   });
   const [calculatingShipping, setCalculatingShipping] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [promoCodeError, setPromoCodeError] = useState('');
+  const [appliedDiscount, setAppliedDiscount] = useState(0);
+
+  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   // Calculate shipping cost when postal code and city are entered
   useEffect(() => {
@@ -55,6 +110,13 @@ export default function CheckoutPage() {
           setShippingRate(rate);
         } catch (error) {
           console.error('Error calculating shipping:', error);
+          // Set default shipping rate on error
+          setShippingRate({
+            cost: 300,
+            currency: 'PKR',
+            estimatedDays: 3,
+            service: 'Standard Delivery'
+          });
         } finally {
           setCalculatingShipping(false);
         }
@@ -92,15 +154,70 @@ export default function CheckoutPage() {
 
     setLoading(true);
     try {
-      // Store both shipping info and shipping rate in session storage
+      // Calculate final totals
+      const checkoutSummary = {
+        subtotal,
+        discount: appliedDiscount,
+        shippingCost: shippingRate?.cost || 0,
+        total: subtotal - appliedDiscount + (shippingRate?.cost || 0)
+      };
+
+      // Store all checkout data
+      sessionStorage.setItem('checkoutSummary', JSON.stringify(checkoutSummary));
       sessionStorage.setItem('shippingInfo', JSON.stringify(shippingInfo));
       sessionStorage.setItem('shippingRate', JSON.stringify(shippingRate));
+      
       router.push('/checkout/payment');
     } catch (error) {
       console.error('Error:', error);
       alert('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleApplyPromoCode = async () => {
+    if (!promoCode.trim()) {
+      setPromoCodeError('Please enter a promo code');
+      return;
+    }
+
+    try {
+      setPromoCodeError('');
+      const validPromo = await validatePromoCode(promoCode);
+      
+      if (!validPromo) {
+        setPromoCodeError('Invalid or expired promo code');
+        setAppliedDiscount(0);
+        return;
+      }
+
+      if (validPromo.minPurchase && subtotal < validPromo.minPurchase) {
+        setPromoCodeError(`Minimum purchase of PKR ${validPromo.minPurchase.toLocaleString()} required`);
+        setAppliedDiscount(0);
+        return;
+      }
+
+      // Calculate discount based on type
+      let discount = 0;
+      if (validPromo.discountType === 'percentage') {
+        discount = Math.round((subtotal * validPromo.discountValue) / 100);
+      } else {
+        discount = validPromo.discountValue;
+      }
+
+      // Update usage count in Sanity
+      await client
+        .patch(validPromo._id)
+        .set({ usageCount: (validPromo.usageCount || 0) + 1 })
+        .commit();
+
+      setAppliedDiscount(discount);
+      setPromoCodeError('');
+    } catch (error) {
+      console.error('Error applying promo code:', error);
+      setPromoCodeError('Error applying promo code');
+      setAppliedDiscount(0);
     }
   };
 
@@ -272,8 +389,14 @@ export default function CheckoutPage() {
               <div className="space-y-2">
                 <p className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span>PKR {cart.reduce((sum, item) => sum + item.price * item.quantity, 0).toLocaleString()}</span>
+                  <span>PKR {subtotal.toLocaleString()}</span>
                 </p>
+                {appliedDiscount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Discount:</span>
+                    <span>-PKR {appliedDiscount.toLocaleString()}</span>
+                  </div>
+                )}
                 {shippingRate && (
                   <p className="flex justify-between">
                     <span>Shipping:</span>
@@ -284,14 +407,38 @@ export default function CheckoutPage() {
                   <p className="flex justify-between font-semibold">
                     <span>Total:</span>
                     <span>
-                      PKR {(
-                        cart.reduce((sum, item) => sum + item.price * item.quantity, 0) +
-                        (shippingRate?.cost || 0)
-                      ).toLocaleString()}
+                      PKR {(subtotal - appliedDiscount + (shippingRate?.cost || 0)).toLocaleString()}
                     </span>
                   </p>
                 </div>
               </div>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value)}
+                  placeholder="Enter promo code"
+                  className="flex-1 border rounded-lg px-4 py-2"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyPromoCode}
+                  className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800"
+                >
+                  Apply
+                </button>
+              </div>
+              {promoCodeError && (
+                <p className="text-red-500 text-sm">{promoCodeError}</p>
+              )}
+              {appliedDiscount > 0 && (
+                <p className="text-green-600 text-sm">
+                  Discount applied: PKR {appliedDiscount.toLocaleString()}
+                </p>
+              )}
             </div>
 
             <div className="pt-4">

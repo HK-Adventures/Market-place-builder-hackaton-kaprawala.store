@@ -1,9 +1,8 @@
 'use client'
-import { useState, useEffect, use } from 'react';
-import { client } from '../../../sanity/client';
-import { useCart } from '../../../context/CartContext';
-import { urlFor } from '../../../sanity/lib/image';
+import { useState } from 'react';
 import Image from 'next/image';
+import { urlFor } from '../sanity/lib/image';
+import { useCart } from '../context/CartContext';
 
 interface Product {
   _id: string;
@@ -14,9 +13,6 @@ interface Product {
   salePrice?: number;
   images: any[];
   stockQuantity: number;
-  selectedColor?: string;
-  selectedSize?: string;
-  quantity?: number;
   colors?: Array<{
     name: string;
     stockQuantity: number;
@@ -27,72 +23,16 @@ interface Product {
   }>;
 }
 
-interface CartItem extends Product {
-  selectedColor: string;
-  selectedSize: string;
-  quantity: number;
-  image: any;
-}
-
-export default function ProductPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params);
-  const [product, setProduct] = useState<Product | null>(null);
+export default function ProductDetails({ product }: { product: Product }) {
   const [selectedImage, setSelectedImage] = useState(0);
-  const [selectedColor, setSelectedColor] = useState<string>('');
-  const [selectedSize, setSelectedSize] = useState<string>('');
-  const { addToCart } = useCart();
-  const [loading, setLoading] = useState(true);
+  const [selectedColor, setSelectedColor] = useState<string>(
+    product.colors?.[0]?.name || ''
+  );
+  const [selectedSize, setSelectedSize] = useState<string>(
+    product.sizes?.[0]?.name || ''
+  );
   const [quantity, setQuantity] = useState(1);
-
-  useEffect(() => {
-    const fetchProduct = async () => {
-      try {
-        const query = `*[_type == "product" && _id == $id][0] {
-          _id,
-          name,
-          description,
-          price,
-          regularPrice,
-          salePrice,
-          images,
-          stockQuantity,
-          "colors": colors[] {
-            "name": coalesce(customColorName, name),
-            stockQuantity
-          },
-          "sizes": sizes[] {
-            name,
-            stockQuantity
-          }
-        }`;
-        
-        const data = await client.fetch(query, { id: resolvedParams.id });
-        setProduct(data);
-        
-        // Set default selections if available
-        if (data.colors && data.colors.length > 0) {
-          setSelectedColor(data.colors[0].name);
-        }
-        if (data.sizes && data.sizes.length > 0) {
-          setSelectedSize(data.sizes[0].name);
-        }
-      } catch (error) {
-        console.error('Error fetching product:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProduct();
-  }, [resolvedParams.id]);
-
-  if (loading || !product) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-2xl text-gray-600">Loading...</div>
-      </div>
-    );
-  }
+  const { addToCart } = useCart();
 
   const incrementQuantity = () => {
     setQuantity(prev => prev + 1);
@@ -117,8 +57,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
       image: product.images[0],
       selectedColor,
       selectedSize,
-      quantity,
-      stockQuantity: product.stockQuantity
+      quantity: quantity
     });
   };
 
@@ -165,13 +104,15 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
             <div className="text-2xl font-bold">
               {product.salePrice ? (
                 <>
-                  <span className="text-red-600">PKR {product.salePrice}</span>
+                  <span className="text-red-600">
+                    PKR {product.salePrice.toLocaleString()}
+                  </span>
                   <span className="ml-2 text-gray-500 line-through text-lg">
-                    PKR {product.regularPrice}
+                    PKR {product.regularPrice.toLocaleString()}
                   </span>
                 </>
               ) : (
-                <span>PKR {product.price}</span>
+                <span>PKR {product.regularPrice.toLocaleString()}</span>
               )}
             </div>
           </div>

@@ -7,6 +7,7 @@ import { supabase } from '../../../lib/supabase';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import CheckoutForm from '../../../components/CheckoutForm';
+import { generateShippingLabel } from '../../../lib/shippingService';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -48,6 +49,13 @@ interface ShippingRate {
   currency: string;
   estimatedDays: number;
   service: string;
+}
+
+interface CheckoutSummary {
+  subtotal: number;
+  discount: number;
+  shippingCost: number;
+  total: number;
 }
 
 const PaymentForm = ({ clientSecret, onSuccess }: { clientSecret: string, onSuccess: () => void }) => {
@@ -132,10 +140,6 @@ export default function PaymentPage() {
   const { cart, clearCart } = useCart();
   const [loading, setLoading] = useState(true);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
-  const [promoCode, setPromoCode] = useState('');
-  const [appliedPromo, setAppliedPromo] = useState<PromoCode | null>(null);
-  const [promoError, setPromoError] = useState('');
-  const [checkingPromo, setCheckingPromo] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'card'>('cod');
   const [clientSecret, setClientSecret] = useState<string>('');
   const [shippingInfo, setShippingInfo] = useState<ShippingInfo>({
@@ -151,6 +155,7 @@ export default function PaymentPage() {
   const [shippingRate, setShippingRate] = useState<ShippingRate | null>(null);
   const [storedShippingInfo, setStoredShippingInfo] = useState<ShippingInfo | null>(null);
   const [storedShippingRate, setStoredShippingRate] = useState<ShippingRate | null>(null);
+  const [checkoutSummary, setCheckoutSummary] = useState<CheckoutSummary | null>(null);
 
   useEffect(() => {
     const loadUserInfo = async () => {
@@ -232,62 +237,18 @@ export default function PaymentPage() {
     createPaymentIntent();
   }, [cart, router, searchParams]);
 
-  const checkPromoCode = async () => {
-    if (!promoCode.trim()) {
-      setPromoError('Please enter a promo code');
-      return;
+  useEffect(() => {
+    const summary = sessionStorage.getItem('checkoutSummary');
+    if (summary) {
+      setCheckoutSummary(JSON.parse(summary));
     }
-
-    setCheckingPromo(true);
-    setPromoError('');
-    try {
-      // Check if promo code exists and is valid
-      const query = `*[_type == "product" && promoCode == $promoCode && promoExpiry > now()][0]{
-        _id,
-        promoCode,
-        discount,
-        promoExpiry
-      }`;
-      
-      const result = await client.fetch(query, { promoCode: promoCode.toUpperCase() });
-
-      if (!result) {
-        setPromoError('Invalid or expired promo code');
-        setAppliedPromo(null);
-        return;
-      }
-
-      // Check if promo code applies to any items in cart
-      const hasValidItem = cart.some(item => item._id === result._id);
-      if (!hasValidItem) {
-        setPromoError('Promo code not applicable to items in cart');
-        setAppliedPromo(null);
-        return;
-      }
-
-      setAppliedPromo(result);
-      setPromoError('');
-    } catch (error) {
-      console.error('Error checking promo code:', error);
-      setPromoError('Error checking promo code');
-    } finally {
-      setCheckingPromo(false);
-    }
-  };
+  }, []);
 
   const calculateTotal = () => {
-    let total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    
-    // Apply discount if valid promo code exists
-    if (appliedPromo) {
-      const discountedItem = cart.find(item => item._id === appliedPromo.productId);
-      if (discountedItem) {
-        const discount = (discountedItem.price * discountedItem.quantity) * (appliedPromo.discount / 100);
-        total -= discount;
-      }
+    if (checkoutSummary) {
+      return checkoutSummary.total;
     }
-    
-    return total;
+    return cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   };
 
   const initializePayment = async () => {
@@ -319,66 +280,16 @@ export default function PaymentPage() {
   };
 
   const handlePlaceOrder = async (paymentStatus: 'pending' | 'paid' = 'pending') => {
-    setLoading(true);
     try {
-      // Generate a unique order ID
-      const orderId = `ORD${Date.now()}${Math.floor(Math.random() * 1000)}`;
+      setLoading(true);
 
-      // First, create or update customer
-      const customerQuery = `*[_type == "customer" && email == $email][0]`;
-      let customer = await client.fetch(customerQuery, { 
-        email: customerInfo?.email 
-      });
-
-      if (!customer) {
-        // Create new customer
-        customer = await client.create({
-          _type: 'customer',
-          email: customerInfo?.email,
-          fullName: customerInfo?.fullName,
-          phoneNumber: customerInfo?.phoneNumber,
-          defaultShipping: {
-            address: customerInfo?.defaultShipping?.address || '',
-            city: customerInfo?.defaultShipping?.city || '',
-            postalCode: customerInfo?.defaultShipping?.postalCode || '',
-            country: customerInfo?.defaultShipping?.country || ''
-          },
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        });
-      } else {
-        // Update existing customer
-        const hasAddress = customer.defaultShipping?.address === customerInfo?.defaultShipping?.address &&
-          customer.defaultShipping?.city === customerInfo?.defaultShipping?.city &&
-          customer.defaultShipping?.postalCode === customerInfo?.defaultShipping?.postalCode &&
-          customer.defaultShipping?.country === customerInfo?.defaultShipping?.country;
-
-        if (!hasAddress) {
-          await client
-            .patch(customer._id)
-            .set({
-              fullName: customerInfo?.fullName,
-              phoneNumber: customerInfo?.phoneNumber,
-              defaultShipping: {
-                address: customerInfo?.defaultShipping?.address || '',
-                city: customerInfo?.defaultShipping?.city || '',
-                postalCode: customerInfo?.defaultShipping?.postalCode || '',
-                country: customerInfo?.defaultShipping?.country || ''
-              },
-              updatedAt: new Date().toISOString()
-            })
-            .setIfMissing({ defaultShipping: {} })
-            .commit();
-        }
-      }
-
-      // Create order with customer reference
+      // Create order first
       const orderData = {
         _type: 'order',
-        orderId,
+        orderId: `ORD${Date.now()}${Math.floor(Math.random() * 1000)}`,
         customer: {
           _type: 'reference',
-          _ref: customer._id
+          _ref: customerInfo?._id
         },
         customerInfo: {
           fullName: customerInfo?.fullName,
@@ -397,33 +308,43 @@ export default function PaymentPage() {
           selectedSize: item.selectedSize,
           selectedColor: item.selectedColor
         })),
-        appliedPromo: appliedPromo ? {
-          code: appliedPromo.promoCode,
-          discount: appliedPromo.discount
-        } : null,
         totalAmount: calculateTotal(),
         paymentMethod: paymentMethod,
         paymentStatus: paymentStatus,
         status: 'pending',
         orderDate: new Date().toISOString()
       };
-
-      console.log('Creating order with data:', orderData);
       const order = await client.create(orderData);
 
-      // Update customer's orders array
-      await client
-        .patch(customer._id)
-        .setIfMissing({ orders: [] })
-        .append('orders', [{ _type: 'reference', _ref: order._id }])
-        .commit();
+      // Generate shipping label
+      try {
+        const trackingNumber = await generateShippingLabel(order);
+        console.log('Generated tracking number:', trackingNumber);
+      } catch (labelError) {
+        console.error('Failed to generate shipping label:', labelError);
+        // Continue with order placement even if label generation fails
+      }
 
-      console.log('Created order:', order);
+      // Update stock quantities for each item
+      for (const item of cart) {
+        await client
+          .patch(item._id)
+          .set({
+            stockQuantity: item.stockQuantity - item.quantity,
+            [`colors[name == "${item.selectedColor}"].stockQuantity`]: item.selectedColor ? 
+              item.stockQuantity - item.quantity : undefined,
+            [`sizes[name == "${item.selectedSize}"].stockQuantity`]: item.selectedSize ? 
+              item.stockQuantity - item.quantity : undefined
+          })
+          .commit();
+      }
 
+      // Clear cart and redirect
       clearCart();
       sessionStorage.removeItem('shippingInfo');
       sessionStorage.removeItem('shippingRate');
       router.push(`/order-success?orderId=${order._id}`);
+
     } catch (error) {
       console.error('Error placing order:', error);
       alert('Failed to place order. Please try again.');
@@ -433,9 +354,6 @@ export default function PaymentPage() {
   };
 
   if (loading || !storedShippingInfo || !storedShippingRate) return <div>Loading...</div>;
-
-  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const total = subtotal + storedShippingRate.cost;
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -463,56 +381,27 @@ export default function PaymentPage() {
                   </div>
                 ))}
 
-                {/* Promo Code Section */}
                 <div className="border-t pt-4">
-                  <div className="flex space-x-2 mb-2">
-                    <input
-                      type="text"
-                      value={promoCode}
-                      onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                      placeholder="Enter promo code"
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500"
-                      disabled={checkingPromo || !!appliedPromo}
-                    />
-                    <button
-                      onClick={checkPromoCode}
-                      disabled={checkingPromo || !!appliedPromo}
-                      className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 disabled:bg-gray-400"
-                    >
-                      {checkingPromo ? 'Checking...' : appliedPromo ? 'Applied' : 'Apply'}
-                    </button>
-                  </div>
-                  
-                  {promoError && (
-                    <p className="text-red-500 text-sm">{promoError}</p>
-                  )}
-                  
-                  {appliedPromo && (
-                    <div className="text-green-600 text-sm">
-                      Promo code applied! {appliedPromo.discount}% off
-                      <button
-                        onClick={() => {
-                          setAppliedPromo(null);
-                          setPromoCode('');
-                        }}
-                        className="ml-2 text-red-500 hover:text-red-700"
-                      >
-                        Remove
-                      </button>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span>Subtotal:</span>
+                      <span>PKR {checkoutSummary?.subtotal?.toLocaleString() ?? '0'}</span>
                     </div>
-                  )}
-                </div>
-
-                <div className="border-t pt-4">
-                  <div className="flex justify-between font-semibold">
-                    <span>Total</span>
-                    <span>PKR {total.toLocaleString()}</span>
+                    {checkoutSummary?.discount && checkoutSummary.discount > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span>Discount:</span>
+                        <span>-PKR {checkoutSummary.discount.toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span>Shipping:</span>
+                      <span>PKR {checkoutSummary?.shippingCost?.toLocaleString() ?? '0'}</span>
+                    </div>
+                    <div className="flex justify-between font-bold">
+                      <span>Total:</span>
+                      <span>PKR {checkoutSummary?.total?.toLocaleString() ?? '0'}</span>
+                    </div>
                   </div>
-                  {appliedPromo && (
-                    <p className="text-green-600 text-sm text-right">
-                      Savings: PKR {((subtotal) - calculateTotal()).toLocaleString()}
-                    </p>
-                  )}
                 </div>
               </div>
             )}
