@@ -33,7 +33,7 @@ export default function LoadingScreen() {
             />
           </svg>
         </div>
-        <h1 className="mt-4 text-2xl font-bold text-black">Loading KAPRA...</h1>
+        <h1 className="mt-4 text-2xl font-bold text-black">Loading ALMIRAH...</h1>
         <p className="mt-2 text-gray-600">Your style journey begins here</p>
       </div>
     </div>

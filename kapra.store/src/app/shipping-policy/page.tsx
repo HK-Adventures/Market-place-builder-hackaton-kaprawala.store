@@ -67,8 +67,8 @@ export default function ShippingPolicyPage() {
               <h2 className="text-2xl font-semibold mt-8 mb-4">Contact Us</h2>
               <p className="text-gray-600">
                 For shipping-related queries, please contact us at{' '}
-                <a href="mailto:shipping@kapra.store" className="text-blue-600 hover:underline">
-                  shipping@kapra.store
+                <a href="mailto:shipping@almirah.store" className="text-blue-600 hover:underline">
+                  shipping@almirah.store
                 </a>
               </p>
             </section>

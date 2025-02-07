@@ -13,7 +13,7 @@ export default function TermsPage() {
             <section>
               <h2 className="text-2xl font-semibold mt-8 mb-4">1. Acceptance of Terms</h2>
               <p className="text-gray-600">
-                By accessing and using KAPRA's website and services, you agree to be bound by these 
+                By accessing and using ALMIRAH's website and services, you agree to be bound by these 
                 Terms and Conditions. If you do not agree with any part of these terms, please do 
                 not use our services.
               </p>
@@ -60,7 +60,7 @@ export default function TermsPage() {
             <section>
               <h2 className="text-2xl font-semibold mt-8 mb-4">6. Limitation of Liability</h2>
               <p className="text-gray-600">
-                KAPRA shall not be liable for any indirect, incidental, special, consequential, or 
+                ALMIRAH shall not be liable for any indirect, incidental, special, consequential, or 
                 punitive damages arising from your use of our services.
               </p>
             </section>
@@ -69,8 +69,8 @@ export default function TermsPage() {
               <h2 className="text-2xl font-semibold mt-8 mb-4">Contact</h2>
               <p className="text-gray-600">
                 For questions about these Terms and Conditions, please contact us at{' '}
-                <a href="mailto:legal@kapra.store" className="text-blue-600 hover:underline">
-                  legal@kapra.store
+                <a href="mailto:legal@almirah.store" className="text-blue-600 hover:underline">
+                  legal@almirah.store
                 </a>
               </p>
             </section>

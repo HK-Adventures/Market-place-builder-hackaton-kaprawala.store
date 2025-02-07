@@ -9,8 +9,18 @@ interface Product {
   price: number;
   regularPrice?: number;
   salePrice?: number;
-  images?: any[];
-  image?: any;
+  images?: Array<{
+    asset: {
+      _ref: string;
+      _type: string;
+    }
+  }>;
+  image?: {
+    asset: {
+      _ref: string;
+      _type: string;
+    }
+  };
   stockQuantity: number;
   description?: string;
   category?: {
@@ -29,7 +39,7 @@ export default function ProductCard({ product }: { product: Product }) {
           <div className="relative h-[350px] w-full">
             {product.images?.[0] || product.image ? (
               <Image
-                src={urlFor(product.images?.[0] || product.image).url()}
+                src={urlFor(product.images?.[0] || product.image || { asset: { _ref: '', _type: 'reference' } }).url()}
                 alt={product.name}
                 fill
                 className="object-cover object-center"

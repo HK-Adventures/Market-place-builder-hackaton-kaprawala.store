@@ -2,6 +2,7 @@ import { client } from '../sanity/client';
 import { useEffect, useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { urlFor } from '../sanity/lib/image';
+import Image from 'next/image';
 
 interface Product {
   _id: string;
@@ -42,8 +43,14 @@ const ProductsPage = () => {
             <h2>{product.name}</h2>
             <p>{product.description}</p>
             <p>Price: ${product.price}</p>
-            <img src={urlFor(product.image).url()} alt={product.name} />
-            <button onClick={() => addToCart(product)}>Add to Cart</button>
+            <Image 
+              src={urlFor(product.image).url()} 
+              alt={product.name}
+              width={500}
+              height={500}
+              className="w-full h-auto"
+            />
+            <button onClick={() => addToCart({ ...product, quantity: 1 })}>Add to Cart</button>
           </li>
         ))}
       </ul>

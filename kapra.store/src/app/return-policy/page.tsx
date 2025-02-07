@@ -75,8 +75,8 @@ export default function ReturnPolicyPage() {
               <h2 className="text-2xl font-semibold mt-8 mb-4">Contact Us</h2>
               <p className="text-gray-600">
                 For return or exchange related queries, please contact us at{' '}
-                <a href="mailto:returns@kapra.store" className="text-blue-600 hover:underline">
-                  returns@kapra.store
+                <a href="mailto:returns@almirah.store" className="text-blue-600 hover:underline">
+                  returns@almirah.store
                 </a>
               </p>
             </section>

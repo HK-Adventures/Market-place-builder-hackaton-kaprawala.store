@@ -57,7 +57,8 @@ export default function ProductDetails({ product }: { product: Product }) {
       image: product.images[0],
       selectedColor,
       selectedSize,
-      quantity: quantity
+      quantity: 1,
+      stockQuantity: product.stockQuantity
     });
   };
 

@@ -1,4 +1,4 @@
-export default {
+const promoCodeSchema = {
   name: 'promoCode',
   title: 'Promo Code',
   type: 'document',
@@ -51,4 +51,6 @@ export default {
       type: 'text'
     }
   ]
-}; 
+};
+
+export default promoCodeSchema;

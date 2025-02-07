@@ -1,9 +1,17 @@
 'use client'
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { client } from '../../../sanity/client';
 import { supabase } from '../../../lib/supabase';
 import { format } from 'date-fns';
+
+interface Order {
+  _id: string;
+  orderId: string;
+  orderDate: string;
+  status: string;
+  totalAmount: number;
+}
 
 interface Customer {
   _id: string;
@@ -16,7 +24,7 @@ interface Customer {
     postalCode: string;
     country: string;
   }>;
-  orders: any[];
+  orders: Order[];
   createdAt: string;
   updatedAt: string;
 }
@@ -27,11 +35,7 @@ export default function CustomersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const router = useRouter();
 
-  useEffect(() => {
-    fetchCustomers();
-  }, []);
-
-  const fetchCustomers = async () => {
+  const fetchCustomers = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -63,7 +67,11 @@ export default function CustomersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
 
   const filteredCustomers = customers.filter(customer => {
     const searchLower = searchTerm.toLowerCase();

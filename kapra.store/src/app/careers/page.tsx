@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 export default function CareersPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -6,16 +8,19 @@ export default function CareersPage() {
           <h1 className="text-4xl font-bold mb-6 text-gray-900">Join Our Team</h1>
           <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
             <div className="mb-8">
-              <img 
-                src="https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2070"
-                alt="Career Opportunities"
-                className="w-full h-[400px] object-cover rounded-lg mb-6"
-              />
+              <div className="relative w-full h-[400px]">
+                <Image 
+                  src="https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2070"
+                  alt="Career Opportunities"
+                  fill
+                  className="object-cover rounded-lg"
+                />
+              </div>
               <p className="text-xl text-gray-600 mb-4">
                 Be part of a dynamic team shaping the future of fashion retail.
               </p>
               <p className="text-gray-600 mb-8">
-                At KAPRA, we're building a team of passionate individuals who share our vision for quality and innovation in fashion.
+                At KAPRA, we&apos;re building a team of passionate individuals who share our vision for quality and innovation in fashion.
               </p>
             </div>
 
@@ -90,7 +95,7 @@ export default function CareersPage() {
           </div>
 
           <div className="text-gray-600">
-            <p className="mb-4">Don't see a position that matches your skills?</p>
+            <p className="mb-4">Don&apos;t see a position that matches your skills?</p>
             <p className="font-semibold">Send us your resume for future opportunities!</p>
           </div>
         </div>

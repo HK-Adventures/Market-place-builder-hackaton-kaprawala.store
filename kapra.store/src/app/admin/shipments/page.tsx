@@ -6,6 +6,16 @@ import { supabase } from '../../../lib/supabase';
 import { format } from 'date-fns';
 import { shippingService } from '../../../lib/shippingService';
 
+interface Tracking {
+  trackingNumber: string;
+  courier: string;
+  shippedAt: string;
+  shippingCost: number;
+  status?: string;
+  estimatedDelivery: string;
+  labelUrl?: string;
+}
+
 interface OrderItem {
   name: string;
   quantity: number;
@@ -30,12 +40,9 @@ interface Order {
   totalAmount: number;
   items: OrderItem[];
   status: string;
-  tracking?: {
-    trackingNumber: string;
-    courier: string;
-    shippedAt: string;
-    shippingCost: number;
-  };
+  tracking?: Tracking;
+  paymentMethod: string;
+  paymentStatus: string;
 }
 
 interface ShippingStatus {
@@ -118,12 +125,21 @@ export default function ShipmentsPage() {
       console.log('Generating label for order:', order);
 
       // Generate shipping label
-      const label = await shippingService.generateLabel({
+      const labelResponse = await shippingService.generateLabel({
+        _id: order._id,
         customerInfo: order.customerInfo,
         items: order.items
       });
 
-      console.log('Label generated:', label);
+      const label = typeof labelResponse === 'string' 
+        ? {
+            trackingNumber: labelResponse,
+            labelUrl: '',
+            status: 'pending',
+            estimatedDelivery: new Date().toISOString(),
+            shippingCost: 0
+          }
+        : labelResponse;
 
       // Update order in Sanity
       await client
@@ -197,6 +213,7 @@ export default function ShipmentsPage() {
     
     for (const order of ordersWithTracking) {
       try {
+        if (!order.tracking?.trackingNumber) return;
         const status = await shippingService.getShipmentStatus(order.tracking.trackingNumber);
         setShippingStatuses(prev => ({
           ...prev,
@@ -308,7 +325,9 @@ export default function ShipmentsPage() {
                     </p>
                     <p>
                       <span className="text-gray-600">Status: </span>
-                      <span className="font-medium">{shippingStatuses[order._id]?.status || order.tracking.status}</span>
+                      <span className="font-medium">
+                        {shippingStatuses[order._id]?.status || order.tracking?.status || 'Pending'}
+                      </span>
                     </p>
                     <p>
                       <span className="text-gray-600">Estimated Delivery: </span>
@@ -332,14 +351,15 @@ export default function ShipmentsPage() {
                         View Shipping Label
                       </a>
                     </div>
-                    {order.tracking.status === 'ready' && (
-                      <button
-                        onClick={() => handleMarkAsHandedOver(order._id, order.tracking.trackingNumber)}
-                        className="mt-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                      >
-                        Mark as Handed Over
-                      </button>
-                    )}
+                    <button
+                      onClick={() => {
+                        if (!order.tracking?.trackingNumber) return;
+                        handleMarkAsHandedOver(order._id, order.tracking.trackingNumber);
+                      }}
+                      className="mt-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    >
+                      Mark as Handed Over
+                    </button>
                   </div>
 
                   {shippingStatuses[order._id]?.updates && (

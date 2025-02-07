@@ -1,63 +1,24 @@
 'use client'
-import React, { useRef, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCart } from '../context/CartContext';
-import { useAuth } from '../context/AuthContext';
 import SearchBar from './SearchBar';
 import { Menu } from '@headlessui/react';
 import { supabase } from '../lib/supabase';
 import { useRouter } from 'next/navigation';
 import { FiUser } from 'react-icons/fi';
 import { cn } from '../lib/utils';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 
-// Add User interface
-interface User {
-  id: string;
-  email: string | null;
-}
+type User = SupabaseUser;  // Use the Supabase User type directly instead of extending it
 
-export default function Navbar() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { cartItems } = useCart();
-  const [userState, setUserState] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
+export default function NavBar() {
+  const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [userState, setUserState] = useState<User | null>(null);
+  const { cartItems } = useCart();
+  const router = useRouter();
   
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setUserState(session?.user ? {
-          id: session.user.id,
-          email: session.user.email || null
-        } : null);
-      } catch (error) {
-        console.error('Auth check error:', error);
-        setUserState(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        setUserState(session?.user ? {
-          id: session.user.id,
-          email: session.user.email || null
-        } : null);
-      } else if (event === 'SIGNED_OUT') {
-        setUserState(null);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -67,30 +28,18 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-      setUserState(null);
-      router.push('/');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  };
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUserState(session?.user ?? null);
+    });
 
-  const navLinks = [
-    { name: 'Home', href: '/' },
-    { name: 'Products', href: '/products' },
-    { name: 'About Us', href: '/about' },
-    { name: 'Contact', href: '/contact' },
-    { name: 'Privacy Policy', href: '/privacy-policy' },
-    { name: 'Terms & Conditions', href: '/terms' },
-    { name: 'Shipping Policy', href: '/shipping-policy' },
-    { name: 'Return Policy', href: '/return-policy' },
-    { name: 'FAQ', href: '/faqs' },
-    { name: 'Size Guide', href: '/size-guide' },
-    { name: 'Store Locator', href: '/store-locator' },
-    { name: 'Careers', href: '/careers' },
-  ];
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/');
+  };
 
   return (
     <nav className={cn(
@@ -113,13 +62,13 @@ export default function Navbar() {
           <div className="flex md:hidden">
             <button
               type="button"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              onClick={() => setIsOpen(!isOpen)}
               className="inline-flex items-center justify-center p-2 rounded-md text-gray-200 hover:text-white hover:bg-black/50"
             >
               <span className="sr-only">Open main menu</span>
               {/* Hamburger icon */}
               <svg
-                className={`${isMobileMenuOpen ? 'hidden' : 'block'} h-6 w-6`}
+                className={`${isOpen ? 'hidden' : 'block'} h-6 w-6`}
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 24 24"
@@ -129,7 +78,7 @@ export default function Navbar() {
               </svg>
               {/* Close icon */}
               <svg
-                className={`${isMobileMenuOpen ? 'block' : 'hidden'} h-6 w-6`}
+                className={`${isOpen ? 'block' : 'hidden'} h-6 w-6`}
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 24 24"
@@ -264,40 +213,40 @@ export default function Navbar() {
         </div>
 
         {/* Mobile Navigation Menu - Shown when menu is open */}
-        <div className={`${isMobileMenuOpen ? 'block' : 'hidden'} md:hidden`}>
+        <div className={`${isOpen ? 'block' : 'hidden'} md:hidden`}>
           <div className="px-2 pt-2 pb-3 space-y-1">
             <Link
               href="/shirts"
               className="block px-3 py-2 rounded-md text-gray-200 hover:text-white hover:bg-black/50"
-              onClick={() => setIsMobileMenuOpen(false)}
+              onClick={() => setIsOpen(false)}
             >
               Shirts
             </Link>
             <Link
               href="/pants"
               className="block px-3 py-2 rounded-md text-gray-200 hover:text-white hover:bg-black/50"
-              onClick={() => setIsMobileMenuOpen(false)}
+              onClick={() => setIsOpen(false)}
             >
               Pants
             </Link>
             <Link
               href="/suits"
               className="block px-3 py-2 rounded-md text-gray-200 hover:text-white hover:bg-black/50"
-              onClick={() => setIsMobileMenuOpen(false)}
+              onClick={() => setIsOpen(false)}
             >
               Complete Suits
             </Link>
             <Link
               href="/kids"
               className="block px-3 py-2 rounded-md text-gray-200 hover:text-white hover:bg-black/50"
-              onClick={() => setIsMobileMenuOpen(false)}
+              onClick={() => setIsOpen(false)}
             >
               Kids
             </Link>
             <Link
               href="/cart"
               className="block px-3 py-2 rounded-md text-gray-200 hover:text-white hover:bg-black/50"
-              onClick={() => setIsMobileMenuOpen(false)}
+              onClick={() => setIsOpen(false)}
             >
               Cart ({cartItems.length})
             </Link>

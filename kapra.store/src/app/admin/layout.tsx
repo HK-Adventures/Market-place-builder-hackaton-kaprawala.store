@@ -1,7 +1,7 @@
 'use client'
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 
 const adminNavItems = [
@@ -22,11 +22,7 @@ export default function AdminLayout({
   const pathname = usePathname();
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    checkAdmin();
-  }, []);
-
-  const checkAdmin = async () => {
+  const checkAdmin = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session || session.user.email !== process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
@@ -38,7 +34,11 @@ export default function AdminLayout({
       console.error('Error checking admin:', error);
       router.push('/login');
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    checkAdmin();
+  }, [checkAdmin]);
 
   if (loading) {
     return <div>Loading...</div>;

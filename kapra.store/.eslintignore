@@ -1,0 +1,6 @@
+node_modules/
+.next/
+public/
+*.config.js
+*.config.ts
+src/sanity/schemaTypes/ 
