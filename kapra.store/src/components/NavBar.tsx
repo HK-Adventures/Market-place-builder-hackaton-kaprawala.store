@@ -8,6 +8,7 @@ import { Menu } from '@headlessui/react';
 import { supabase } from '../lib/supabase';
 import { useRouter } from 'next/navigation';
 import { FiUser } from 'react-icons/fi';
+import { cn } from '../lib/utils';
 
 // Add User interface
 interface User {
@@ -15,12 +16,13 @@ interface User {
   email: string | null;
 }
 
-export default function NavBar() {
+export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { cartItems } = useCart();
   const [userState, setUserState] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const [scrolled, setScrolled] = useState(false);
   
   useEffect(() => {
     const checkAuth = async () => {
@@ -56,6 +58,15 @@ export default function NavBar() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
@@ -82,22 +93,28 @@ export default function NavBar() {
   ];
 
   return (
-    <header className="bg-white shadow-md">
+    <nav className={cn(
+      'fixed top-4 left-4 right-4 z-50 transition-all duration-300',
+      'backdrop-blur-[2px] bg-black/80 supports-[backdrop-filter]:bg-black/80',
+      'rounded-2xl mx-auto max-w-7xl font-medium antialiased',
+      'text-shadow-sm',
+      scrolled ? 'shadow-lg shadow-black/5' : ''
+    )}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <nav className="flex items-center justify-between h-16">
+        <div className="flex justify-between items-center h-16">
           {/* Logo - Always visible */}
           <div className="flex-shrink-0">
-            <Link href="/" className="text-xl font-bold">
+            <Link href="/" className="text-xl font-bold text-white">
               KAPRA
             </Link>
           </div>
 
-          {/* Mobile menu button */}
+          {/* Mobile menu button - Updated colors */}
           <div className="flex md:hidden">
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+              className="inline-flex items-center justify-center p-2 rounded-md text-gray-200 hover:text-white hover:bg-black/50"
             >
               <span className="sr-only">Open main menu</span>
               {/* Hamburger icon */}
@@ -125,25 +142,27 @@ export default function NavBar() {
 
           {/* Desktop Navigation - Hidden on mobile */}
           <div className="hidden md:flex md:items-center md:space-x-8">
-            <Link href="/shirts" className="text-gray-700 hover:text-gray-900">
+            <Link href="/shirts" className="text-gray-200 hover:text-white">
               Shirts
             </Link>
-            <Link href="/pants" className="text-gray-700 hover:text-gray-900">
+            <Link href="/pants" className="text-gray-200 hover:text-white">
               Pants
             </Link>
-            <Link href="/suits" className="text-gray-700 hover:text-gray-900">
+            <Link href="/suits" className="text-gray-200 hover:text-white">
               Complete Suits
             </Link>
-            <Link href="/kids" className="text-gray-700 hover:text-gray-900">
+            <Link href="/kids" className="text-gray-200 hover:text-white">
               Kids
             </Link>
           </div>
 
           {/* Search, Cart, and Profile */}
           <div className="flex items-center space-x-4">
-            <SearchBar />
+            <div className="hidden md:block">
+              <SearchBar />
+            </div>
             
-            <Link href="/cart" className="text-gray-700 hover:text-gray-900">
+            <Link href="/cart" className="text-gray-200 hover:text-white">
               <span className="relative inline-block">
                 <svg className="w-6 h-6" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
                   <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
@@ -156,9 +175,9 @@ export default function NavBar() {
               </span>
             </Link>
 
-            {/* Profile Dropdown */}
+            {/* Profile Dropdown - Updated colors */}
             <Menu as="div" className="relative">
-              <Menu.Button className="flex items-center text-gray-700 hover:text-gray-900">
+              <Menu.Button className="flex items-center text-gray-200 hover:text-white">
                 <FiUser className="w-6 h-6" />
               </Menu.Button>
 
@@ -242,96 +261,49 @@ export default function NavBar() {
               </Menu.Items>
             </Menu>
           </div>
-        </nav>
+        </div>
 
         {/* Mobile Navigation Menu - Shown when menu is open */}
         <div className={`${isMobileMenuOpen ? 'block' : 'hidden'} md:hidden`}>
           <div className="px-2 pt-2 pb-3 space-y-1">
-            <SearchBar />
             <Link
               href="/shirts"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+              className="block px-3 py-2 rounded-md text-gray-200 hover:text-white hover:bg-black/50"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Shirts
             </Link>
             <Link
               href="/pants"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+              className="block px-3 py-2 rounded-md text-gray-200 hover:text-white hover:bg-black/50"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Pants
             </Link>
             <Link
               href="/suits"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+              className="block px-3 py-2 rounded-md text-gray-200 hover:text-white hover:bg-black/50"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Complete Suits
             </Link>
             <Link
               href="/kids"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+              className="block px-3 py-2 rounded-md text-gray-200 hover:text-white hover:bg-black/50"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Kids
             </Link>
             <Link
               href="/cart"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+              className="block px-3 py-2 rounded-md text-gray-200 hover:text-white hover:bg-black/50"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Cart ({cartItems.length})
             </Link>
-            {userState ? (
-              <>
-                <Link
-                  href="/my-orders"
-                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  My Orders
-                </Link>
-                {userState.email?.toLowerCase() === process.env.NEXT_PUBLIC_ADMIN_EMAIL?.toLowerCase() && (
-                  <Link
-                    href="/admin"
-                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Admin Dashboard
-                  </Link>
-                )}
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Login
-                </Link>
-                <Link
-                  href="/register"
-                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Register
-                </Link>
-              </>
-            )}
           </div>
         </div>
       </div>
-    </header>
+    </nav>
   );
 } 

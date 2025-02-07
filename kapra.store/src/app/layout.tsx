@@ -4,6 +4,7 @@ import { AuthProvider } from '../context/AuthContext';
 import Navbar from '../components/NavBar';
 import Footer from '../components/Footer';
 import './globals.css';
+import LoadingScreen from '../components/LoadingScreen';
 
 export default function RootLayout({
   children,
@@ -13,12 +14,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-white" suppressHydrationWarning>
+        <LoadingScreen />
         <AuthProvider>
           <CartProvider>
             <Navbar />
-            <div className="min-h-screen">
+            <main className="pt-24">
               {children}
-            </div>
+            </main>
             <Footer />
           </CartProvider>
         </AuthProvider>

@@ -154,7 +154,7 @@ export default function CategoryProducts({ categoryName }: CategoryProductsProps
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-16">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold capitalize">{categoryName}</h1>
         <button
@@ -244,7 +244,7 @@ export default function CategoryProducts({ categoryName }: CategoryProductsProps
           <p className="text-gray-600">No products found in this category.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+        <div className="min-h-[800px] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
           {filteredProducts.map((product) => (
             <ProductCard key={product._id} product={product} />
           ))}

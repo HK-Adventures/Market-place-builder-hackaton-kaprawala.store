@@ -57,7 +57,7 @@ export default function SearchBar() {
     <div ref={searchRef} className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="text-gray-700 hover:text-gray-900 focus:outline-none p-2 rounded-full hover:bg-gray-100"
+        className="text-gray-200 hover:text-white focus:outline-none p-2 rounded-full hover:bg-black/50"
         aria-label="Search"
       >
         <svg
