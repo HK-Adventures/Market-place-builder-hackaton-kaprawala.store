@@ -25,7 +25,6 @@ interface OrderItem {
 }
 
 interface OrderDetails {
-  _id: string;
   orderId: string;
   customerInfo: {
     fullName: string;
@@ -36,7 +35,11 @@ interface OrderDetails {
     postalCode: string;
     country: string;
   };
-  items: OrderItem[];
+  items: Array<{
+    name: string;
+    quantity: number;
+    price: number;
+  }>;
 }
 
 interface Order {
@@ -130,13 +133,13 @@ export default function ShipmentsPage() {
         {
           _id: order._id,
           orderId: order.orderId,
-          customerInfo: order.customerInfo,
+          // customerInfo: order.customerInfo,
           items: order.items
         },
         {
           fullName: order.customerInfo.fullName,
-          email: order.customerInfo.email,
-          phoneNumber: order.customerInfo.phoneNumber,
+          // email: order.customerInfo.email,
+          // phoneNumber: order.customerInfo.phoneNumber,
           address: order.customerInfo.address,
           city: order.customerInfo.city,
           postalCode: order.customerInfo.postalCode,

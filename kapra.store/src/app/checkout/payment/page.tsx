@@ -221,7 +221,7 @@ export default function PaymentPage() {
               </div>
             </div>
 
-            {paymentMethod === 'card' && clientSecret && shippingInfo && (
+            {paymentMethod === 'card' && clientSecret && shippingInfo && shippingRate && (
               <div className="mt-6">
                 <Elements 
                   stripe={stripePromise} 
@@ -232,6 +232,7 @@ export default function PaymentPage() {
                 >
                   <CheckoutForm 
                     shippingInfo={shippingInfo}
+                    shippingRate={shippingRate}
                     onSuccess={handlePaymentSuccess}
                   />
                 </Elements>
@@ -270,7 +271,7 @@ export default function PaymentPage() {
                   <span>Shipping</span>
                   <span>PKR {shippingRate?.cost.toLocaleString()}</span>
                 </div>
-                {checkoutSummary?.discount > 0 && (
+                {checkoutSummary?.discount && checkoutSummary.discount > 0 && (
                   <div className="flex justify-between text-green-600">
                     <span>Discount</span>
                     <span>- PKR {checkoutSummary.discount.toLocaleString()}</span>

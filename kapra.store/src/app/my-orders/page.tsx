@@ -5,7 +5,6 @@ import { supabase } from '../../lib/supabase';
 import { client } from '../../sanity/client';
 import { format, addMinutes, isBefore, parseISO, addHours, formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
-import { useAuth } from '../../context/AuthContext';
 
 interface Order {
   _id: string;
@@ -200,10 +199,6 @@ export default function MyOrdersPage() {
     } finally {
       setCancellingOrder(null);
     }
-  };
-
-  const getTrackingUrl = (trackingNumber: string) => {
-    return `https://t.17track.net/en#nums=${trackingNumber}`;
   };
 
   if (loading) {

@@ -2,28 +2,12 @@
 import { useState, useEffect } from 'react';
 import { client } from '../../sanity/client';
 import ProductCard from '../../components/ProductCard';
-import { Image as SanityImage } from 'sanity';
-
-interface Product {
-  _id: string;
-  name: string;
-  price: number;
-  description: string;
-  category: string;
-  stockQuantity: number;
-  image: {
-    asset: {
-      _ref: string;
-      _type: 'reference';
-    };
-  };
-  images: SanityImage[];
-}
+import { Product } from '../../types/product'
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string | 'all'>('all');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -84,7 +68,7 @@ export default function ProductsPage() {
       <div className="mb-8">
         <select
           value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
+          onChange={(e) => setSelectedCategory(e.target.value as string | 'all')}
           className="block w-full md:w-auto px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="all">All Categories</option>

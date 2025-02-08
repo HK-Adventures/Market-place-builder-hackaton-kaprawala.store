@@ -1,12 +1,5 @@
-import { defineField, defineType, Rule, ValidationContext, SanityDocument } from 'sanity'
+import { defineField, defineType, Rule, ValidationContext, SanityDocument, StringRule, NumberRule, DatetimeRule } from 'sanity'
 
-interface PromotionDocument extends SanityDocument {
-  code: string;
-  discountType: string;
-  discountValue: number;
-  startDate: string;
-  endDate: string;
-}
 
 export default defineType({
   name: 'promotion',
@@ -17,7 +10,7 @@ export default defineType({
       name: 'code',
       title: 'Promo Code',
       type: 'string',
-      validation: (rule: Rule) => rule.required()
+      validation: (rule: StringRule) => rule.required()
     }),
     defineField({
       name: 'discountType',
@@ -29,20 +22,13 @@ export default defineType({
           { title: 'Fixed Amount', value: 'fixed' }
         ]
       },
-      validation: (rule: Rule) => rule.required()
+      validation: (rule: StringRule) => rule.required()
     }),
     defineField({
       name: 'discountValue',
       title: 'Discount Value',
       type: 'number',
-      validation: (rule: Rule) => 
-        rule.required().positive()
-        .custom((value: number, context: ValidationContext) => {
-          if (context.document.discountType === 'percentage' && value > 100) {
-            return 'Percentage cannot be greater than 100'
-          }
-          return true
-        })
+      validation: (rule: NumberRule) => rule.required().positive()
     }),
     defineField({
       name: 'minPurchase',
@@ -50,21 +36,19 @@ export default defineType({
       type: 'number',
       description: 'Minimum order amount required to use this promo code (0 for no minimum)',
       initialValue: 0,
-      validation: (rule: Rule) => rule.min(0)
+      validation: (rule: NumberRule) => rule.min(0)
     }),
     defineField({
       name: 'startDate',
       title: 'Start Date',
       type: 'datetime',
-      validation: (rule: Rule) => rule.required()
+      validation: (rule: DatetimeRule) => rule.required()
     }),
     defineField({
       name: 'endDate',
       title: 'End Date',
       type: 'datetime',
-      validation: (rule: Rule) => 
-        rule.required()
-        .min(rule.valueOfField('startDate'))
+      validation: (rule: DatetimeRule) => rule.required().min(rule.valueOfField('startDate'))
     }),
     defineField({
       name: 'isActive',
@@ -83,8 +67,8 @@ export default defineType({
       name: 'usageLimit',
       title: 'Usage Limit',
       type: 'number',
-      hidden: ({ document }: { document: SanityDocument }) => !document?.hasUsageLimit,
-      validation: (rule: Rule) => rule.positive().integer(),
+      hidden: ({ document }) => !document?.hasUsageLimit,
+      validation: (rule: NumberRule) => rule.positive().integer(),
       description: 'Maximum number of times this code can be used'
     }),
     defineField({
