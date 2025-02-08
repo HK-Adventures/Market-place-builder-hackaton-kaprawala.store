@@ -43,8 +43,8 @@ export default function AboutPage() {
               <h2 className="text-2xl font-semibold mb-4">Contact Us</h2>
               <p className="text-gray-600">
                 Have questions? We&apos;d love to hear from you. Send us a message at{' '}
-                <a href="mailto:support@almirah.store" className="text-blue-600 hover:underline">
-                  support@almirah.store
+                <a href="mailto:support@kaprawala.store" className="text-blue-600 hover:underline">
+                  support@kaprawala.store
                 </a>
               </p>
             </div>

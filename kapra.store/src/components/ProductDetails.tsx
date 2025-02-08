@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { urlFor } from '../sanity/lib/image';
 import { useCart } from '../context/CartContext';
+import { Image as SanityImage } from 'sanity';
 
 interface Product {
   _id: string;
@@ -11,7 +12,7 @@ interface Product {
   price: number;
   regularPrice: number;
   salePrice?: number;
-  images: any[];
+  images: SanityImage[];
   stockQuantity: number;
   colors?: Array<{
     name: string;

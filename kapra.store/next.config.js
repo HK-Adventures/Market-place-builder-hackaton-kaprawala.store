@@ -5,7 +5,7 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'cdn.sanity.io',
-        pathname: '/**',
+        pathname: '**',
       },
       {
         protocol: 'https',
@@ -13,7 +13,10 @@ const nextConfig = {
         pathname: '/**',
       }
     ]
-  }
+  },
+  experimental: {
+    missingSuspenseWithCSRBailout: false,
+  },
 };
 
-module.exports = nextConfig;
+export default nextConfig;

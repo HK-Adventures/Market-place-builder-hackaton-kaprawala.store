@@ -1,47 +1,22 @@
 'use client'
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useCart } from '../../../context/CartContext';
-import { client } from '../../../sanity/client';
-import { supabase } from '../../../lib/supabase';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import CheckoutForm from '../../../components/CheckoutForm';
-import { generateShippingLabel } from '../../../lib/shippingService';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+const COD_LIMIT = 5000; // 5,000 PKR limit for Cash on Delivery
 
 interface ShippingInfo {
   fullName: string;
   email: string;
   phoneNumber: string;
   address: string;
-  area: string;
   city: string;
   postalCode: string;
   country: string;
-}
-
-interface PromoCode {
-  discount: number;
-  promoCode: string;
-  promoExpiry: string;
-  productId: string;
-}
-
-interface CustomerInfo {
-  _id?: string;
-  _type: string;
-  email: string | undefined;
-  fullName: string;
-  phoneNumber: string;
-  defaultShipping?: {
-    address: string;
-    city: string;
-    postalCode: string;
-    country: string;
-  };
-  createdAt?: string;
 }
 
 interface ShippingRate {
@@ -53,410 +28,264 @@ interface ShippingRate {
 
 interface CheckoutSummary {
   subtotal: number;
+  shipping: number;
   discount: number;
-  shippingCost: number;
   total: number;
+  promoCode?: string;
 }
-
-const PaymentForm = ({ clientSecret, onSuccess }: { clientSecret: string, onSuccess: () => void }) => {
-  const [error, setError] = useState('');
-  const [processing, setProcessing] = useState(false);
-  const [cardElement, setCardElement] = useState<any>(null);
-
-  useEffect(() => {
-    const setupStripe = async () => {
-      const stripe = await stripePromise;
-      if (!stripe) return;
-
-      const elements = stripe.elements();
-      const card = elements.create('card');
-      card.mount('#card-element');
-      setCardElement(card);
-
-      // Handle real-time validation errors
-      card.on('change', (event: any) => {
-        setError(event.error ? event.error.message : '');
-      });
-    };
-
-    setupStripe();
-
-    return () => {
-      if (cardElement) {
-        cardElement.unmount();
-      }
-    };
-  }, []);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setProcessing(true);
-    
-    try {
-      const stripe = await stripePromise;
-      if (!stripe) throw new Error('Stripe failed to load');
-
-      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
-        clientSecret,
-        {
-          payment_method: {
-            card: cardElement,
-          },
-        }
-      );
-
-      if (stripeError) {
-        setError(stripeError.message || 'Payment failed');
-      } else if (paymentIntent.status === 'succeeded') {
-        onSuccess();
-      }
-    } catch (err) {
-      setError('Payment failed. Please try again.');
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="p-4 border rounded">
-        <div id="card-element" className="p-2 border rounded bg-white"></div>
-      </div>
-      {error && <div className="text-red-500 text-sm">{error}</div>}
-      <button
-        type="submit"
-        disabled={processing}
-        className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 transition-colors disabled:bg-gray-400"
-      >
-        {processing ? 'Processing...' : 'Pay Now'}
-      </button>
-    </form>
-  );
-};
 
 export default function PaymentPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { cart, clearCart } = useCart();
   const [loading, setLoading] = useState(true);
-  const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'card'>('cod');
-  const [clientSecret, setClientSecret] = useState<string>('');
-  const [shippingInfo, setShippingInfo] = useState<ShippingInfo>({
-    fullName: '',
-    email: '',
-    phoneNumber: '',
-    address: '',
-    area: '',
-    city: '',
-    postalCode: '',
-    country: 'Pakistan'
-  });
+  const [error, setError] = useState<string | null>(null);
+  const [shippingInfo, setShippingInfo] = useState<ShippingInfo | null>(null);
   const [shippingRate, setShippingRate] = useState<ShippingRate | null>(null);
-  const [storedShippingInfo, setStoredShippingInfo] = useState<ShippingInfo | null>(null);
-  const [storedShippingRate, setStoredShippingRate] = useState<ShippingRate | null>(null);
+  const [clientSecret, setClientSecret] = useState<string>('');
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'cod'>('card');
+  const [processingOrder, setProcessingOrder] = useState(false);
   const [checkoutSummary, setCheckoutSummary] = useState<CheckoutSummary | null>(null);
-
-  useEffect(() => {
-    const loadUserInfo = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          router.push('/login');
-          return;
-        }
-
-        const customer = await client.fetch(
-          `*[_type == "customer" && email == $email][0]{
-            _id,
-            fullName,
-            email,
-            phoneNumber,
-            defaultShipping
-          }`,
-          { email: session.user.email }
-        );
-
-        if (customer) {
-          setCustomerInfo(customer);
-        }
-      } catch (error) {
-        console.error('Error loading user info:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadUserInfo();
-  }, []);
-
-  useEffect(() => {
-    console.log('Current cart:', cart); // Debug cart contents
-  }, [cart]);
-
-  useEffect(() => {
-    const shippingInfoStr = sessionStorage.getItem('shippingInfo');
-    const shippingRateStr = sessionStorage.getItem('shippingRate');
-
-    if (!shippingInfoStr || !shippingRateStr || cart.length === 0) {
-      router.push('/checkout');
-      return;
-    }
-
-    const parsedShippingInfo = JSON.parse(shippingInfoStr);
-    const parsedShippingRate = JSON.parse(shippingRateStr);
-    
-    setStoredShippingInfo(parsedShippingInfo);
-    setStoredShippingRate(parsedShippingRate);
-
-    const createPaymentIntent = async () => {
-      try {
-        // Calculate total amount including shipping
-        const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const shipping = parsedShippingRate.cost;
-        const total = subtotal + shipping;
-
-        const response = await fetch('/api/create-payment-intent', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            amount: total,
-            orderId: searchParams.get('orderId')
-          }),
-        });
-
-        const data = await response.json();
-        setClientSecret(data.clientSecret);
-      } catch (error) {
-        console.error('Error creating payment intent:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    createPaymentIntent();
-  }, [cart, router, searchParams]);
-
-  useEffect(() => {
-    const summary = sessionStorage.getItem('checkoutSummary');
-    if (summary) {
-      setCheckoutSummary(JSON.parse(summary));
-    }
-  }, []);
 
   const calculateTotal = () => {
     if (checkoutSummary) {
       return checkoutSummary.total;
     }
-    return cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const shipping = shippingRate?.cost || 0;
+    return subtotal + shipping;
   };
 
-  const initializePayment = async () => {
+  const isCODAvailable = calculateTotal() <= COD_LIMIT;
+
+  useEffect(() => {
+    const initializePage = async () => {
+      try {
+        if (cart.length === 0) {
+          router.push('/cart');
+          return;
+        }
+
+        const storedShippingInfo = sessionStorage.getItem('shippingInfo');
+        const storedShippingRate = sessionStorage.getItem('shippingRate');
+        const storedCheckoutSummary = sessionStorage.getItem('checkoutSummary');
+
+        if (!storedShippingInfo || !storedShippingRate || !storedCheckoutSummary) {
+          router.push('/checkout');
+          return;
+        }
+
+        const parsedShippingInfo = JSON.parse(storedShippingInfo);
+        const parsedShippingRate = JSON.parse(storedShippingRate);
+        const parsedCheckoutSummary = JSON.parse(storedCheckoutSummary);
+        
+        setShippingInfo(parsedShippingInfo);
+        setShippingRate(parsedShippingRate);
+        setCheckoutSummary(parsedCheckoutSummary);
+
+        if (paymentMethod === 'card') {
+          const response = await fetch('/api/create-payment-intent', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              items: cart,
+              shipping: parsedShippingRate.cost,
+              discount: parsedCheckoutSummary.discount,
+            }),
+          });
+
+          const data = await response.json();
+          setClientSecret(data.clientSecret);
+        }
+        
+        setLoading(false);
+      } catch (err) {
+        console.error('Error initializing payment page:', err);
+        setError('Failed to load payment information');
+        setLoading(false);
+      }
+    };
+
+    initializePage();
+  }, [cart, router, paymentMethod]);
+
+  const handleCODOrder = async () => {
     try {
-      const response = await fetch('/api/create-payment-intent', {
+      setProcessingOrder(true);
+      const response = await fetch('/api/create-order', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          amount: calculateTotal(),
-          orderId: Math.random().toString(36).substring(7), // Generate a simple order ID
+          items: cart,
+          shippingInfo,
+          shippingRate,
+          paymentMethod: 'cod',
+          total: calculateTotal(),
         }),
       });
 
       const data = await response.json();
-      if (data.error) {
-        throw new Error(data.error);
-      }
-      setClientSecret(data.clientSecret);
-    } catch (error) {
-      console.error('Payment initialization error:', error);
-      alert('Failed to initialize payment. Please try again.');
-    }
-  };
 
-  const handlePaymentSuccess = async () => {
-    await handlePlaceOrder('paid');
-  };
-
-  const handlePlaceOrder = async (paymentStatus: 'pending' | 'paid' = 'pending') => {
-    try {
-      setLoading(true);
-
-      // Create order first
-      const orderData = {
-        _type: 'order',
-        orderId: `ORD${Date.now()}${Math.floor(Math.random() * 1000)}`,
-        customer: {
-          _type: 'reference',
-          _ref: customerInfo?._id
-        },
-        customerInfo: {
-          fullName: customerInfo?.fullName,
-          email: customerInfo?.email,
-          phoneNumber: customerInfo?.phoneNumber,
-          address: customerInfo?.defaultShipping?.address || '',
-          city: customerInfo?.defaultShipping?.city || '',
-          postalCode: customerInfo?.defaultShipping?.postalCode || '',
-          country: customerInfo?.defaultShipping?.country || ''
-        },
-        items: cart.map(item => ({
-          productId: item._id,
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price,
-          selectedSize: item.selectedSize,
-          selectedColor: item.selectedColor
-        })),
-        totalAmount: calculateTotal(),
-        paymentMethod: paymentMethod,
-        paymentStatus: paymentStatus,
-        status: 'pending',
-        orderDate: new Date().toISOString()
-      };
-      const order = await client.create(orderData);
-
-      // Generate shipping label
-      try {
-        const trackingNumber = await generateShippingLabel(order);
-        console.log('Generated tracking number:', trackingNumber);
-      } catch (labelError) {
-        console.error('Failed to generate shipping label:', labelError);
-        // Continue with order placement even if label generation fails
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create order');
       }
 
-      // Update stock quantities for each item
-      for (const item of cart) {
-        await client
-          .patch(item._id)
-          .set({
-            stockQuantity: item.stockQuantity - item.quantity,
-            [`colors[name == "${item.selectedColor}"].stockQuantity`]: item.selectedColor ? 
-              item.stockQuantity - item.quantity : undefined,
-            [`sizes[name == "${item.selectedSize}"].stockQuantity`]: item.selectedSize ? 
-              item.stockQuantity - item.quantity : undefined
-          })
-          .commit();
-      }
-
-      // Clear cart and redirect
+      // Clear cart and stored data
       clearCart();
       sessionStorage.removeItem('shippingInfo');
       sessionStorage.removeItem('shippingRate');
-      router.push(`/order-success?orderId=${order._id}`);
+      sessionStorage.removeItem('checkoutSummary');
 
+      // Redirect to success page with order ID
+      router.push(`/order-success?orderId=${data.orderId}`);
     } catch (error) {
-      console.error('Error placing order:', error);
-      alert('Failed to place order. Please try again.');
-    } finally {
-      setLoading(false);
+      console.error('Error creating order:', error);
+      setError('Failed to create order. Please try again.');
+      setProcessingOrder(false);
     }
   };
 
-  if (loading || !storedShippingInfo || !storedShippingRate) return <div>Loading...</div>;
+  const handlePaymentSuccess = () => {
+    // Clear cart and stored data
+    clearCart();
+    sessionStorage.removeItem('shippingInfo');
+    sessionStorage.removeItem('shippingRate');
+    sessionStorage.removeItem('checkoutSummary');
+    
+    router.push('/order-success');
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-red-600">{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
-      <div className="container mx-auto px-4">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8">Order Summary</h1>
-          
-          <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h2 className="text-xl font-semibold mb-4">Order Details</h2>
-            {cart.length === 0 ? (
-              <p className="text-gray-500">Your cart is empty</p>
-            ) : (
-              <div className="space-y-4">
-                {cart.map((item) => (
-                  <div key={item._id} className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-sm text-gray-500">
-                        {item.selectedSize && `Size: ${item.selectedSize}`}
-                        {item.selectedColor && ` | Color: ${item.selectedColor}`}
-                      </p>
-                      <p className="text-sm">Quantity: {item.quantity}</p>
-                    </div>
-                    <span className="font-medium">PKR {(item.price * item.quantity).toLocaleString()}</span>
-                  </div>
-                ))}
+      <div className="max-w-7xl mx-auto px-4">
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-lg">
+            {error}
+          </div>
+        )}
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h2 className="text-2xl font-bold mb-4">Payment Method</h2>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <input
+                  type="radio"
+                  id="card"
+                  value="card"
+                  checked={paymentMethod === 'card'}
+                  onChange={() => setPaymentMethod('card')}
+                  className="h-4 w-4"
+                  disabled={processingOrder}
+                />
+                <label htmlFor="card">Credit/Debit Card</label>
+              </div>
+              <div className="flex items-center space-x-3">
+                <input
+                  type="radio"
+                  id="cod"
+                  value="cod"
+                  checked={paymentMethod === 'cod'}
+                  onChange={() => setPaymentMethod('cod')}
+                  disabled={!isCODAvailable || processingOrder}
+                  className="h-4 w-4"
+                />
+                <label 
+                  htmlFor="cod" 
+                  className={!isCODAvailable ? 'text-gray-400' : ''}
+                >
+                  Cash on Delivery
+                  {!isCODAvailable && (
+                    <span className="text-red-500 text-sm ml-2">
+                      (Not available for orders above PKR {COD_LIMIT.toLocaleString()})
+                    </span>
+                  )}
+                </label>
+              </div>
+            </div>
 
-                <div className="border-t pt-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span>Subtotal:</span>
-                      <span>PKR {checkoutSummary?.subtotal?.toLocaleString() ?? '0'}</span>
-                    </div>
-                    {checkoutSummary?.discount && checkoutSummary.discount > 0 && (
-                      <div className="flex justify-between text-green-600">
-                        <span>Discount:</span>
-                        <span>-PKR {checkoutSummary.discount.toLocaleString()}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span>Shipping:</span>
-                      <span>PKR {checkoutSummary?.shippingCost?.toLocaleString() ?? '0'}</span>
-                    </div>
-                    <div className="flex justify-between font-bold">
-                      <span>Total:</span>
-                      <span>PKR {checkoutSummary?.total?.toLocaleString() ?? '0'}</span>
-                    </div>
-                  </div>
-                </div>
+            {paymentMethod === 'card' && clientSecret && shippingInfo && (
+              <div className="mt-6">
+                <Elements 
+                  stripe={stripePromise} 
+                  options={{
+                    clientSecret,
+                    appearance: { theme: 'stripe' },
+                  }}
+                >
+                  <CheckoutForm 
+                    shippingInfo={shippingInfo}
+                    onSuccess={handlePaymentSuccess}
+                  />
+                </Elements>
+              </div>
+            )}
+
+            {paymentMethod === 'cod' && (
+              <div className="mt-6">
+                <button
+                  onClick={handleCODOrder}
+                  disabled={processingOrder}
+                  className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 disabled:bg-gray-400"
+                >
+                  {processingOrder ? 'Processing...' : 'Place Order'}
+                </button>
               </div>
             )}
           </div>
 
-          <div className="mt-8 bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold mb-4">Payment Method</h2>
+          {/* Order Summary */}
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h2 className="text-2xl font-bold mb-4">Order Summary</h2>
             <div className="space-y-4">
-              <div className="flex items-center space-x-4">
-                <label className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    value="cod"
-                    checked={paymentMethod === 'cod'}
-                    onChange={(e) => setPaymentMethod(e.target.value as 'cod')}
-                    className="form-radio"
-                  />
-                  <span>Cash on Delivery</span>
-                </label>
-                <label className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    value="card"
-                    checked={paymentMethod === 'card'}
-                    onChange={(e) => {
-                      setPaymentMethod(e.target.value as 'card');
-                      initializePayment();
-                    }}
-                    className="form-radio"
-                  />
-                  <span>Credit/Debit Card</span>
-                </label>
-              </div>
-
-              {paymentMethod === 'card' && clientSecret && (
-                <div className="mt-4">
-                  <Elements stripe={stripePromise} options={{ clientSecret }}>
-                    <CheckoutForm 
-                      shippingInfo={storedShippingInfo}
-                      shippingRate={storedShippingRate}
-                      onSuccess={handlePaymentSuccess}
-                    />
-                  </Elements>
+              {cart.map((item) => (
+                <div key={item._id} className="flex justify-between">
+                  <span>{item.name} x {item.quantity}</span>
+                  <span>PKR {(item.price * item.quantity).toLocaleString()}</span>
                 </div>
-              )}
-
-              {paymentMethod === 'cod' && (
-                <button
-                  onClick={() => handlePlaceOrder('pending')}
-                  disabled={loading}
-                  className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 transition-colors disabled:bg-gray-400"
-                >
-                  {loading ? 'Processing...' : 'Place Order (Cash on Delivery)'}
-                </button>
-              )}
+              ))}
+              <div className="border-t pt-4">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>PKR {checkoutSummary?.subtotal.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Shipping</span>
+                  <span>PKR {shippingRate?.cost.toLocaleString()}</span>
+                </div>
+                {checkoutSummary?.discount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Discount</span>
+                    <span>- PKR {checkoutSummary.discount.toLocaleString()}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-bold mt-2">
+                  <span>Total</span>
+                  <span>PKR {calculateTotal().toLocaleString()}</span>
+                </div>
+                {checkoutSummary?.promoCode && (
+                  <div className="mt-2 text-sm text-green-600">
+                    Promo code applied: {checkoutSummary.promoCode}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

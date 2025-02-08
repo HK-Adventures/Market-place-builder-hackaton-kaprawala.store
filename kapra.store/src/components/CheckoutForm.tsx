@@ -23,7 +23,7 @@ interface CheckoutFormProps {
   onSuccess: () => void;
 }
 
-export default function CheckoutForm({ shippingInfo, shippingRate, onSuccess }: CheckoutFormProps) {
+export default function CheckoutForm({ shippingInfo, onSuccess }: CheckoutFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [error, setError] = useState<string | null>(null);

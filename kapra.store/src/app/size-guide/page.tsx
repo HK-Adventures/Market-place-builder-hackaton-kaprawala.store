@@ -10,7 +10,7 @@ export default function SizeGuidePage() {
 
           {/* Women's Size Guide */}
           <div className="mb-12">
-            <h2 className="text-3xl font-bold mb-6 text-gray-900">Women's Size Guide</h2>
+            <h2 className="text-3xl font-bold mb-6 text-gray-900">Women&apos;s Size Guide</h2>
             <div className="overflow-x-auto rounded-lg border border-gray-200">
               <table className="w-full bg-white">
                 <thead className="bg-gray-100">
@@ -65,7 +65,7 @@ export default function SizeGuidePage() {
 
           {/* Men's Size Guide */}
           <div>
-            <h2 className="text-3xl font-bold mb-6 text-gray-900">Men's Size Guide</h2>
+            <h2 className="text-3xl font-bold mb-6 text-gray-900">Men&apos;s Size Guide</h2>
             <div className="overflow-x-auto rounded-lg border border-gray-200">
               <table className="w-full bg-white">
                 <thead className="bg-gray-100">
@@ -167,7 +167,7 @@ export default function SizeGuidePage() {
 
           {/* Kids Size Guide (4-7 years) */}
           <div className="mb-12">
-            <h2 className="text-3xl font-bold mb-6 text-gray-900">Kids' Size Guide (4 - 7 years)</h2>
+            <h2 className="text-3xl font-bold mb-6 text-gray-900">Kids&apos;s Size Guide (4 - 7 years)</h2>
             <div className="overflow-x-auto rounded-lg border border-gray-200">
               <table className="w-full bg-white">
                 <thead className="bg-gray-100">
@@ -225,7 +225,7 @@ export default function SizeGuidePage() {
 
           {/* Kids Size Guide (8-14 years) */}
           <div className="mb-12">
-            <h2 className="text-3xl font-bold mb-6 text-gray-900">Kids' Size Guide (8 - 14 years)</h2>
+            <h2 className="text-3xl font-bold mb-6 text-gray-900">Kids&apos;s Size Guide (8 - 14 years)</h2>
             <div className="overflow-x-auto rounded-lg border border-gray-200">
               <table className="w-full bg-white">
                 <thead className="bg-gray-100">

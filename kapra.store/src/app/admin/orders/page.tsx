@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { client } from '../../../sanity/client';
 import { supabase } from '../../../lib/supabase';
@@ -36,18 +36,17 @@ interface Order {
   };
 }
 
+// Add type for filter state
+type OrderStatus = 'all' | 'pending' | 'processing' | 'completed' | 'cancelled';
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'processing' | 'completed' | 'cancelled'>('all');
+  const [filter, setFilter] = useState<OrderStatus>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const router = useRouter();
 
-  useEffect(() => {
-    fetchOrders();
-  }, [filter]);
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -80,7 +79,11 @@ export default function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter, router]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
@@ -121,7 +124,7 @@ export default function OrdersPage() {
           />
           <select
             value={filter}
-            onChange={(e) => setFilter(e.target.value as any)}
+            onChange={(e) => setFilter(e.target.value as OrderStatus)}
             className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
           >
             <option value="all">All Orders</option>

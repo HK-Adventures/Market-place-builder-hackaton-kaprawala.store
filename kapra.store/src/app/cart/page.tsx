@@ -1,14 +1,13 @@
 'use client'
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCart } from '../../context/CartContext';
 import { supabase } from '../../lib/supabase';
 import { urlFor } from '../../sanity/lib/image';
+import Image from 'next/image';
 
 export default function CartPage() {
   const { cart, removeFromCart, updateQuantity, clearCart } = useCart();
-  const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -80,10 +79,12 @@ export default function CartPage() {
         <div className="md:col-span-2">
           {cart.map((item) => (
             <div key={item._id} className="flex items-center gap-4 p-4 bg-white rounded-lg shadow-sm mb-4">
-              <img
-                src={urlFor(item.image).width(80).height(80).url()}
+              <Image 
+                src={urlFor(item.image).url()}
                 alt={item.name}
-                className="w-20 h-20 object-cover rounded-md"
+                width={100}
+                height={100}
+                className="object-cover rounded-md"
               />
               <div className="flex-grow">
                 <h3 className="font-semibold text-gray-900">{item.name}</h3>

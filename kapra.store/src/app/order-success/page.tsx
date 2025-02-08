@@ -3,124 +3,208 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCart } from '../../context/CartContext';
+import { client } from '../../sanity/client';
+
+interface OrderDetails {
+  _id: string;
+  orderId: string;
+  orderDate: string;
+  status: string;
+  paymentMethod: string;
+  paymentStatus: string;
+  totalAmount: number;
+  customerInfo: {
+    fullName: string;
+    email: string;
+    phoneNumber: string;
+    address: string;
+    city: string;
+    postalCode: string;
+    country: string;
+  };
+  items: Array<{
+    name: string;
+    quantity: number;
+    price: number;
+    selectedSize?: string;
+    selectedColor?: string;
+  }>;
+}
 
 export default function OrderSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { cart } = useCart();
-  const [orderId, setOrderId] = useState<string>('');
+  const { clearCart } = useCart();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
 
   useEffect(() => {
-    if (cart.length > 0) {
+    const orderId = searchParams.get('orderId');
+    if (!orderId) {
       router.push('/');
+      return;
     }
-    // Get order ID from URL parameters
-    const id = searchParams.get('orderId');
-    if (id) {
-      setOrderId(id);
-    }
-  }, [cart, router, searchParams]);
+
+    const fetchOrderDetails = async () => {
+      try {
+        const order = await client.fetch(
+          `*[_type == "order" && _id == $orderId][0]{
+            _id,
+            orderId,
+            orderDate,
+            status,
+            paymentMethod,
+            paymentStatus,
+            totalAmount,
+            customerInfo,
+            items
+          }`,
+          { orderId }
+        );
+
+        if (!order) {
+          throw new Error('Order not found');
+        }
+
+        setOrderDetails(order);
+        clearCart();
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching order:', err);
+        setError('Failed to load order details');
+        setLoading(false);
+      }
+    };
+
+    fetchOrderDetails();
+  }, [searchParams, router, clearCart]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
+  if (error || !orderDetails) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 mb-4">{error || 'Order not found'}</div>
+          <Link 
+            href="/" 
+            className="text-black underline hover:text-gray-600"
+          >
+            Return to Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md">
-        <div className="text-center">
-          {/* Success Icon */}
-          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
-            <svg
-              className="h-6 w-6 text-green-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-          </div>
-
-          <h2 className="text-3xl font-extrabold text-gray-900 mb-2">
-            Order Placed Successfully!
-          </h2>
-          
-          {/* Order Number */}
-          {orderId && (
-            <div className="bg-gray-100 rounded-md py-2 px-4 mb-4 inline-block">
-              <p className="text-sm text-gray-600">Order Number</p>
-              <p className="font-mono text-lg font-semibold">{orderId}</p>
+    <div className="min-h-screen bg-gray-50 py-12">
+      <div className="max-w-3xl mx-auto px-4">
+        <div className="bg-white rounded-lg shadow p-6">
+          {/* Success Header */}
+          <div className="text-center mb-8">
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+              <svg
+                className="h-6 w-6 text-green-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
             </div>
-          )}
-
-          <p className="text-gray-600 mb-8">
-            Thank you for your purchase. We'll send you an email confirmation shortly.
-          </p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Order Confirmed!
+            </h1>
+            <p className="text-gray-600">
+              Thank you for your order. We'll send you shipping confirmation soon.
+            </p>
+          </div>
 
           {/* Order Details */}
-          <div className="text-left bg-gray-50 p-4 rounded-lg mb-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">What's Next?</h3>
-            <ul className="space-y-2 text-gray-600">
-              <li className="flex items-start">
-                <span className="mr-2">1.</span>
-                You'll receive an order confirmation email with your order details
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2">2.</span>
-                We'll process your order and prepare it for shipping
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2">3.</span>
-                Once shipped, we'll send you tracking information
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2">4.</span>
-                Your order will arrive within 3-5 business days
-              </li>
-            </ul>
+          <div className="border-t border-gray-200 pt-6">
+            <h2 className="text-xl font-semibold mb-4">Order Details</h2>
+            <div className="space-y-4">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Order ID:</span>
+                <span className="font-medium">{orderDetails.orderId}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Date:</span>
+                <span className="font-medium">
+                  {new Date(orderDetails.orderDate).toLocaleDateString()}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Payment Method:</span>
+                <span className="font-medium">
+                  {orderDetails.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Card'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Total Amount:</span>
+                <span className="font-medium">
+                  PKR {orderDetails.totalAmount.toLocaleString()}
+                </span>
+              </div>
+            </div>
           </div>
 
-          {/* Save Order Number */}
-          {orderId && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8 text-left">
-              <p className="text-sm text-blue-800 font-medium mb-2">
-                Important: Save your order number
-              </p>
-              <p className="text-sm text-blue-600">
-                Please save your order number for future reference. You'll need it to track your order or contact support.
-              </p>
+          {/* Shipping Details */}
+          <div className="border-t border-gray-200 pt-6 mt-6">
+            <h2 className="text-xl font-semibold mb-4">Shipping Details</h2>
+            <div className="space-y-2">
+              <p>{orderDetails.customerInfo.fullName}</p>
+              <p>{orderDetails.customerInfo.address}</p>
+              <p>{orderDetails.customerInfo.city}, {orderDetails.customerInfo.postalCode}</p>
+              <p>{orderDetails.customerInfo.country}</p>
+              <p>Phone: {orderDetails.customerInfo.phoneNumber}</p>
             </div>
-          )}
+          </div>
+
+          {/* Order Items */}
+          <div className="border-t border-gray-200 pt-6 mt-6">
+            <h2 className="text-xl font-semibold mb-4">Order Items</h2>
+            <div className="space-y-4">
+              {orderDetails.items.map((item, index) => (
+                <div key={index} className="flex justify-between">
+                  <span>
+                    {item.name} x {item.quantity}
+                    {item.selectedSize && ` (${item.selectedSize})`}
+                    {item.selectedColor && ` - ${item.selectedColor}`}
+                  </span>
+                  <span>PKR {(item.price * item.quantity).toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+          </div>
 
           {/* Action Buttons */}
-          <div className="space-y-4">
+          <div className="mt-8 space-y-4">
             <Link
-              href={`/my-orders${orderId ? `?highlight=${orderId}` : ''}`}
-              className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              href="/my-orders"
+              className="block w-full text-center bg-black text-white py-3 rounded-lg hover:bg-gray-800"
             >
               View My Orders
             </Link>
             <Link
-              href="/products"
-              className="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              href="/"
+              className="block w-full text-center bg-white text-black border border-black py-3 rounded-lg hover:bg-gray-50"
             >
               Continue Shopping
             </Link>
-          </div>
-
-          {/* Contact Support */}
-          <div className="mt-8 text-sm text-gray-600">
-            <p>
-              Having trouble with your order?{' '}
-              <Link 
-                href={`/contact${orderId ? `?orderId=${orderId}` : ''}`} 
-                className="text-black font-medium hover:underline"
-              >
-                Contact Support
-              </Link>
-            </p>
           </div>
         </div>
       </div>

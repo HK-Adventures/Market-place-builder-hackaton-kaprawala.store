@@ -121,7 +121,7 @@ export default function FAQsPage() {
           <div className="mt-12 text-center">
             <h2 className="text-2xl font-bold mb-4 text-gray-900">Still Have Questions?</h2>
             <p className="text-gray-600 mb-6">
-              We're here to help! Contact our customer service team.
+              We are here to help! Contact our customer service team.
             </p>
             <Link 
               href="/contact" 

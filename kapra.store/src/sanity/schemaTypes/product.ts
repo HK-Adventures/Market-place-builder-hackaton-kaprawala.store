@@ -9,7 +9,7 @@ export default defineType({
       name: 'name',
       title: 'Name',
       type: 'string',
-      validation: (rule: any) => rule.required()
+      validation: rule => rule.required()
     },
     {
       name: 'slug',
@@ -19,51 +19,65 @@ export default defineType({
         source: 'name',
         maxLength: 96
       },
-      validation: (rule: any) => rule.required()
+      validation: rule => rule.required()
     },
     {
       name: 'description',
       title: 'Description',
-      type: 'text'
+      type: 'text',
+      validation: rule => rule.required()
     },
     {
       name: 'images',
       title: 'Images',
       type: 'array',
       of: [{ type: 'image' }],
-      validation: (rule: any) => rule.required().min(1)
+      validation: rule => rule.required()
     },
     {
       name: 'category',
       title: 'Category',
       type: 'reference',
       to: [{ type: 'category' }],
-      validation: (rule: any) => rule.required()
+      validation: rule => rule.required(),
+      options: {
+        disableNew: false
+      }
     },
     {
       name: 'regularPrice',
       title: 'Regular Price',
       type: 'number',
-      validation: (rule: any) => rule.required().positive()
+      validation: rule => rule.min(0)
     },
     {
       name: 'salePrice',
       title: 'Sale Price',
       type: 'number',
-      validation: (rule: any) => rule.positive(),
-      description: 'Leave empty if not on sale'
+      validation: rule => rule.min(0)
     },
     {
       name: 'stockQuantity',
       title: 'Stock Quantity',
       type: 'number',
-      validation: (rule: any) => rule.required().min(0)
+      validation: rule => rule.required().min(0)
+    },
+    {
+      name: 'price',
+      title: 'Price',
+      type: 'number',
+      validation: rule => rule.required().min(0)
     },
     {
       name: 'colors',
       title: 'Available Colors',
       type: 'array',
-      validation: (rule: any) => rule.min(0),
+      validation: rule => {
+        return rule.custom(colors => {
+          if (!colors || !colors.length) return true;
+          return true;
+        });
+      },
       of: [{
         type: 'object',
         name: 'colorVariant',
@@ -98,7 +112,7 @@ export default defineType({
             name: 'stockQuantity',
             title: 'Stock Quantity',
             type: 'number',
-            validation: (rule: any) => rule.required().min(0)
+            validation: rule => rule.required().min(0)
           }
         ]
       }]
@@ -114,7 +128,7 @@ export default defineType({
             name: 'name',
             title: 'Size Name',
             type: 'string',
-            validation: (rule: any) => rule.required()
+            validation: rule => rule.required()
           },
           {
             name: 'measurements',
@@ -126,7 +140,7 @@ export default defineType({
             name: 'stockQuantity',
             title: 'Stock Quantity for this Size',
             type: 'number',
-            validation: (rule: any) => rule.required().min(0)
+            validation: rule => rule.required().min(0)
           }
         ],
         preview: {
@@ -142,13 +156,27 @@ export default defineType({
             }
           }
         }
-      }]
+      }],
+      validation: (rule, context) => {
+        return rule.custom((sizes) => {
+          if (!sizes || !sizes.length) return true;
+          return true;
+        });
+      }
     },
     {
       name: 'isActive',
       title: 'Active',
       type: 'boolean',
       initialValue: true
+    },
+    {
+      name: 'featured',
+      title: 'Featured',
+      type: 'boolean',
+      validation: (rule, context) => {
+        return rule.required();
+      }
     }
   ],
   preview: {

@@ -1,4 +1,5 @@
 'use client'
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '../../context/CartContext';
@@ -72,9 +73,19 @@ const validatePromoCode = async (code: string) => {
   }
 };
 
+interface AddressFormProps {
+  onSubmit: (address: ShippingInfo) => void;
+  defaultValues?: Partial<ShippingInfo>;
+}
+
+interface PaymentFormProps {
+  onSubmit: (paymentMethod: string) => void;
+  total: number;
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cart, updateQuantity } = useCart();
+  const { cart } = useCart();
   const [loading, setLoading] = useState(false);
   const [shippingRate, setShippingRate] = useState<ShippingRate | null>(null);
   const [shippingInfo, setShippingInfo] = useState<ShippingInfo>({

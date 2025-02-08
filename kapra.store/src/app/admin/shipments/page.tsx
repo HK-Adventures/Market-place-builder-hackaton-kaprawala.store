@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { client } from '../../../sanity/client';
 import { supabase } from '../../../lib/supabase';
@@ -24,6 +24,21 @@ interface OrderItem {
   selectedColor?: string;
 }
 
+interface OrderDetails {
+  _id: string;
+  orderId: string;
+  customerInfo: {
+    fullName: string;
+    email: string;
+    phoneNumber: string;
+    address: string;
+    city: string;
+    postalCode: string;
+    country: string;
+  };
+  items: OrderItem[];
+}
+
 interface Order {
   _id: string;
   orderId: string;
@@ -43,43 +58,29 @@ interface Order {
   tracking?: Tracking;
   paymentMethod: string;
   paymentStatus: string;
-}
-
-interface ShippingStatus {
-  status: string;
-  estimatedDelivery: string;
-  currentLocation?: string;
-  updates: Array<{
-    timestamp: string;
+  shippingStatus?: {
     status: string;
-    location: string;
-  }>;
+    updates: Array<{
+      timestamp: string;
+      status: string;
+      location: string;
+    }>;
+  };
 }
 
 export default function ShipmentsPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [trackingNumber, setTrackingNumber] = useState('');
-  const [processingOrder, setProcessingOrder] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'pending' | 'processing' | 'all'>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('shipmentsFilter') as 'pending' | 'processing' | 'all') || 'all';
-    }
-    return 'all';
-  });
   const [searchTerm, setSearchTerm] = useState('');
-  const [shippingStatuses, setShippingStatuses] = useState<Record<string, ShippingStatus>>({});
+  const [processingOrder, setProcessingOrder] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'pending' | 'processing' | 'all'>('all');
   const router = useRouter();
 
   useEffect(() => {
     localStorage.setItem('shipmentsFilter', filter);
   }, [filter]);
 
-  useEffect(() => {
-    fetchOrders();
-  }, [filter]);
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -112,7 +113,7 @@ export default function ShipmentsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router, filter]);
 
   const handleShipment = async (orderId: string) => {
     setProcessingOrder(orderId);
@@ -125,11 +126,23 @@ export default function ShipmentsPage() {
       console.log('Generating label for order:', order);
 
       // Generate shipping label
-      const labelResponse = await shippingService.generateLabel({
-        _id: order._id,
-        customerInfo: order.customerInfo,
-        items: order.items
-      });
+      const labelResponse = await shippingService.generateLabel(
+        {
+          _id: order._id,
+          orderId: order.orderId,
+          customerInfo: order.customerInfo,
+          items: order.items
+        },
+        {
+          fullName: order.customerInfo.fullName,
+          email: order.customerInfo.email,
+          phoneNumber: order.customerInfo.phoneNumber,
+          address: order.customerInfo.address,
+          city: order.customerInfo.city,
+          postalCode: order.customerInfo.postalCode,
+          country: order.customerInfo.country
+        }
+      );
 
       const label = typeof labelResponse === 'string' 
         ? {
@@ -208,28 +221,33 @@ export default function ShipmentsPage() {
     }
   };
 
-  const fetchShippingStatuses = async () => {
-    const ordersWithTracking = orders.filter(order => order.tracking?.trackingNumber);
-    
-    for (const order of ordersWithTracking) {
-      try {
-        if (!order.tracking?.trackingNumber) return;
-        const status = await shippingService.getShipmentStatus(order.tracking.trackingNumber);
-        setShippingStatuses(prev => ({
-          ...prev,
-          [order._id]: status,
-        }));
-      } catch (error) {
-        console.error('Error fetching shipping status:', error);
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (orders.length > 0) {
-      fetchShippingStatuses();
+  const fetchShippingStatuses = useCallback(async () => {
+    try {
+      const updatedOrders = await Promise.all(
+        orders.map(async (order) => {
+          if (order.tracking?.trackingNumber) {
+            const response = await fetch(
+              `/api/shipment?tracking_number=${order.tracking.trackingNumber}&courier=${order.tracking.courier}`
+            );
+            const data = await response.json();
+            return { ...order, shippingStatus: data.tracking_status };
+          }
+          return order;
+        })
+      );
+      setOrders(updatedOrders);
+    } catch (error) {
+      console.error('Error fetching shipping statuses:', error);
     }
   }, [orders]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
+
+  useEffect(() => {
+    fetchShippingStatuses();
+  }, [fetchShippingStatuses]);
 
   const filteredOrders = orders.filter(order => {
     const searchLower = searchTerm.toLowerCase();
@@ -326,19 +344,19 @@ export default function ShipmentsPage() {
                     <p>
                       <span className="text-gray-600">Status: </span>
                       <span className="font-medium">
-                        {shippingStatuses[order._id]?.status || order.tracking?.status || 'Pending'}
+                        {order.tracking?.status || 'Pending'}
                       </span>
                     </p>
                     <p>
                       <span className="text-gray-600">Estimated Delivery: </span>
                       <span className="font-medium">
-                        {format(new Date(shippingStatuses[order._id]?.estimatedDelivery || order.tracking.estimatedDelivery), 'PPP')}
+                        {format(new Date(order.tracking.estimatedDelivery), 'PPP')}
                       </span>
                     </p>
-                    {shippingStatuses[order._id]?.currentLocation && (
+                    {order.shippingStatus && (
                       <p>
                         <span className="text-gray-600">Current Location: </span>
-                        <span className="font-medium">{shippingStatuses[order._id].currentLocation}</span>
+                        <span className="font-medium">{order.shippingStatus.status}</span>
                       </p>
                     )}
                     <div className="mt-2">
@@ -362,11 +380,11 @@ export default function ShipmentsPage() {
                     </button>
                   </div>
 
-                  {shippingStatuses[order._id]?.updates && (
+                  {order.shippingStatus && (
                     <div className="mt-4">
                       <h5 className="font-medium mb-2">Tracking Updates</h5>
                       <div className="space-y-2">
-                        {shippingStatuses[order._id].updates.map((update, index) => (
+                        {order.shippingStatus.updates.map((update, index) => (
                           <div key={index} className="text-sm">
                             <p className="font-medium">{update.status}</p>
                             <p className="text-gray-600">

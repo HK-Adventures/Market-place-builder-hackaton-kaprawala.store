@@ -1,8 +1,14 @@
 'use client'
+import React from 'react';
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import Link from 'next/link';
+
+interface AuthError {
+  message: string;
+  status?: number;
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -13,27 +19,27 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirectTo') || '/';
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     setLoading(true);
-    setError(null);
 
-    supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-    .then(({ data, error }) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
       if (error) throw error;
       if (data.user) {
         router.push(redirectTo);
       }
-    })
-    .catch((error: any) => {
-      setError(error.message || 'Failed to login');
-    })
-    .finally(() => {
+    } catch (error: unknown) {
+      const authError = error as AuthError;
+      setError(authError.message || 'An error occurred during login');
+    } finally {
       setLoading(false);
-    });
+    }
   };
 
   return (
@@ -98,9 +104,12 @@ export default function LoginPage() {
           </div>
 
           <div className="text-center">
-            <Link href="/register" className="text-sm text-gray-600 hover:text-gray-900">
-              Don't have an account? Sign up
-            </Link>
+            <p className="text-sm text-gray-600">
+              Don&apos;t have an account?{' '}
+              <Link href="/register" className="text-blue-600 hover:underline">
+                Register here
+              </Link>
+            </p>
           </div>
         </form>
       </div>

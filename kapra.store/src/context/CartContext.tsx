@@ -1,13 +1,14 @@
 'use client'
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { Image as SanityImage } from 'sanity';
 
 // Define the type for cart items
 interface CartItem {
   _id: string;
   name: string;
   price: number;
-  image: any;
+  image: SanityImage;
   quantity: number;
   selectedSize?: string;
   selectedColor?: string;
@@ -15,35 +16,33 @@ interface CartItem {
 }
 
 // Add Product interface
-interface Product {
-  _id: string;
-  name: string;
-  price: number;
-  stockQuantity: number;
-  colors?: string[];
-  sizes?: string[];
-  image: {
-    asset: {
-      _ref: string;
-      _type: 'reference';
-    };
-  };
-}
+// interface Product { ... }
 
 // Define the type for the context value
 interface CartContextType {
   cart: CartItem[];
   cartItems: CartItem[];
   addToCart: (item: CartItem) => void;
-  removeFromCart: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  removeFromCart: (itemId: string) => void;
+  updateQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
   isAuthenticated: boolean;
   calculateTotal: () => number;
+  mounted: boolean;
 }
 
 // Create the context with a default value
-const CartContext = createContext<CartContextType | undefined>(undefined);
+const CartContext = createContext<CartContextType>({
+  cart: [],
+  cartItems: [],
+  addToCart: (_item) => {},
+  removeFromCart: (_itemId) => {},
+  updateQuantity: (_itemId, _quantity) => {},
+  clearCart: () => {},
+  isAuthenticated: false,
+  calculateTotal: () => 0,
+  mounted: false
+});
 
 export const useCart = () => {
   const context = useContext(CartContext);
@@ -158,7 +157,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     updateQuantity,
     clearCart,
     isAuthenticated,
-    calculateTotal
+    calculateTotal,
+    mounted
   };
 
   // Render null or provider based on mounted state

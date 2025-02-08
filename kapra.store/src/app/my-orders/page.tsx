@@ -4,16 +4,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import { client } from '../../sanity/client';
 import { format, addMinutes, isBefore, parseISO, addHours, formatDistanceToNow } from 'date-fns';
-import { enUS } from 'date-fns/locale';
-
-interface OrderItem {
-  productId: string;
-  name: string;
-  quantity: number;
-  price: number;
-  selectedSize: string;
-  selectedColor: string;
-}
+import Link from 'next/link';
+import { useAuth } from '../../context/AuthContext';
 
 interface Order {
   _id: string;
@@ -227,7 +219,7 @@ export default function MyOrdersPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-4">No Orders Found</h2>
-          <p className="text-gray-600 mb-6">You haven't placed any orders yet.</p>
+          <p className="text-gray-600 mb-6">You haven&apos;t placed any orders yet.</p>
           <button
             onClick={() => router.push('/products')}
             className="bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800"
@@ -335,8 +327,8 @@ export default function MyOrdersPage() {
                     {order.tracking?.trackingNumber && (
                       <div className="flex items-center space-x-2">
                         <span className="text-sm text-gray-600">Track:</span>
-                        <a
-                          href={getTrackingUrl(order.tracking.trackingNumber)}
+                        <Link
+                          href={`https://track.aftership.com/tcs-pakistan/${order.tracking.trackingNumber}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
@@ -355,7 +347,7 @@ export default function MyOrdersPage() {
                               d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" 
                             />
                           </svg>
-                        </a>
+                        </Link>
                       </div>
                     )}
 
@@ -411,13 +403,13 @@ export default function MyOrdersPage() {
                   <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-2">Shipping Updates</h4>
                     <div className="flex items-center space-x-2">
-                      <a
-                        href={getTrackingUrl(order.tracking.trackingNumber)}
+                      <Link
+                        href={`https://track.aftership.com/tcs-pakistan/${order.tracking.trackingNumber}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                       >
-                        Track on 17TRACK
+                        Track Order
                         <svg 
                           className="ml-2 -mr-1 h-4 w-4" 
                           fill="none" 
@@ -431,7 +423,7 @@ export default function MyOrdersPage() {
                             d="M9 5l7 7-7 7" 
                           />
                         </svg>
-                      </a>
+                      </Link>
                       <span className="text-sm text-gray-500">
                         Tracking Number: {order.tracking.trackingNumber}
                       </span>

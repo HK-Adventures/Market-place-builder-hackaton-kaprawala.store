@@ -4,6 +4,8 @@ import { client } from '../sanity/client';
 import { urlFor } from '../sanity/lib/image';
 import Link from 'next/link';
 import { useClickOutside } from '../hooks/useClickOutside';
+import Image from 'next/image';
+import { Image as SanityImage } from 'sanity';
 
 interface SearchProduct {
   _id: string;
@@ -11,6 +13,13 @@ interface SearchProduct {
   price: number;
   image: any;
   category: string;
+}
+
+interface SearchResult {
+  _id: string;
+  name: string;
+  price: number;
+  image: SanityImage;
 }
 
 export default function SearchBar() {
@@ -52,6 +61,10 @@ export default function SearchBar() {
 
     return () => clearTimeout(delayDebounceFn);
   }, [searchTerm]);
+
+  const handleSearch = async (query: string) => {
+    // ... code
+  };
 
   return (
     <div ref={searchRef} className="relative">
@@ -102,11 +115,14 @@ export default function SearchBar() {
                   className="block hover:bg-gray-50"
                 >
                   <div className="flex items-center px-4 py-3 border-b border-gray-100">
-                    <img
-                      src={urlFor(product.image).width(50).height(50).url()}
-                      alt={product.name}
-                      className="w-12 h-12 object-cover rounded"
-                    />
+                    <div className="relative h-16 w-16">
+                      <Image
+                        src={urlFor(product.image).url()}
+                        alt={product.name}
+                        fill
+                        className="object-cover rounded"
+                      />
+                    </div>
                     <div className="ml-3">
                       <p className="text-sm font-medium text-gray-900">{product.name}</p>
                       <p className="text-sm text-gray-500">{product.category}</p>

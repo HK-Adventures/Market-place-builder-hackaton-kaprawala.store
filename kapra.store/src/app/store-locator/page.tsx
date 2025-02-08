@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 export default function StoreLocatorPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -6,13 +8,17 @@ export default function StoreLocatorPage() {
           <h1 className="text-4xl font-bold mb-6 text-gray-900">Coming Soon to Your City</h1>
           <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
             <div className="mb-8">
-              <img 
-                src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=2070"
-                alt="Store Coming Soon"
-                className="w-full h-[400px] object-cover rounded-lg mb-6"
-              />
+              <div className="relative w-full h-[400px]">
+                <Image
+                  src="/map-placeholder.jpg"
+                  alt="Store locations map"
+                  fill
+                  className="object-cover rounded-lg"
+                  priority
+                />
+              </div>
               <p className="text-xl text-gray-600 mb-4">
-                We're excited to announce that KAPRA will soon be opening physical stores across major cities.
+                We are excited to announce that KAPRA will soon be opening physical stores across major cities.
               </p>
               <p className="text-gray-600 mb-8">
                 Experience our premium collection in person, with expert styling advice and personalized service.
@@ -50,7 +56,7 @@ export default function StoreLocatorPage() {
               <div className="text-left">
                 <h2 className="text-2xl font-bold mb-4 text-gray-900">Stay Updated</h2>
                 <p className="text-gray-600 mb-4">
-                  Want to know when we're opening in your city? Sign up for our newsletter to receive updates.
+                  Want to know when we are opening in your city? Sign up for our newsletter to receive updates.
                 </p>
                 <form className="space-y-4">
                   <input

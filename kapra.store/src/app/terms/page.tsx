@@ -13,7 +13,7 @@ export default function TermsPage() {
             <section>
               <h2 className="text-2xl font-semibold mt-8 mb-4">1. Acceptance of Terms</h2>
               <p className="text-gray-600">
-                By accessing and using ALMIRAH's website and services, you agree to be bound by these 
+                By accessing and using ALMIRAH&apos;s website and services, you agree to be bound by these 
                 Terms and Conditions. If you do not agree with any part of these terms, please do 
                 not use our services.
               </p>
@@ -45,7 +45,7 @@ export default function TermsPage() {
                 <li>Returns accepted within 7 days of delivery</li>
                 <li>Items must be unused and in original packaging</li>
                 <li>Refunds processed within 5-7 business days</li>
-                <li>Shipping costs for returns are customer's responsibility</li>
+                <li>Shipping costs for returns are customer&apos;s responsibility</li>
               </ul>
             </section>
 

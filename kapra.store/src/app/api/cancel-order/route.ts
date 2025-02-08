@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { client } from '../../../sanity/client';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
-import { addMinutes, addHours, isBefore } from 'date-fns';
+import { addHours, isBefore } from 'date-fns';
 
 export async function POST(request: Request) {
   const headers = {

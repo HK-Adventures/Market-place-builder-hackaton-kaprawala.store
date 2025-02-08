@@ -9,9 +9,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 // Validate URL format
 try {
-  new URL(supabaseUrl)
-} catch (error) {
-  throw new Error('Invalid Supabase URL format')
+  new URL(supabaseUrl);
+} catch {
+  throw new Error('Invalid Supabase URL');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {

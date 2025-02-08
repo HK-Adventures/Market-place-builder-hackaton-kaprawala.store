@@ -1,4 +1,13 @@
-const promoCodeSchema = {
+import { defineType, Rule } from 'sanity';
+
+interface PromoCodeDocument {
+  code: string;
+  discountType: 'percentage' | 'fixed';
+  discountValue: number;
+  minPurchase?: number;
+}
+
+export default defineType({
   name: 'promoCode',
   title: 'Promo Code',
   type: 'document',
@@ -7,37 +16,39 @@ const promoCodeSchema = {
       name: 'code',
       title: 'Code',
       type: 'string',
-      validation: (Rule: any) => Rule.required()
+      validation: (rule: Rule) => rule.required()
     },
     {
-      name: 'discountPercentage',
-      title: 'Discount Percentage',
+      name: 'discountType',
+      title: 'Discount Type',
+      type: 'string',
+      validation: (rule: Rule) => rule.required()
+    },
+    {
+      name: 'discountValue',
+      title: 'Discount Value',
       type: 'number',
-      validation: (Rule: any) => Rule.min(0).max(100)
+      validation: (rule: Rule) => rule.required().min(0)
     },
     {
-      name: 'discountAmount',
-      title: 'Discount Amount',
-      type: 'number',
-      validation: (Rule: any) => Rule.min(0)
-    },
-    {
-      name: 'minimumPurchase',
+      name: 'minPurchase',
       title: 'Minimum Purchase Amount',
       type: 'number',
-      validation: (Rule: any) => Rule.min(0)
+      validation: (rule: Rule) => rule.min(0)
     },
     {
       name: 'dateStart',
       title: 'Valid From',
       type: 'datetime',
-      initialValue: () => new Date().toISOString()
+      initialValue: () => new Date().toISOString(),
+      validation: (rule: Rule) => rule.required()
     },
     {
       name: 'dateEnd',
       title: 'Valid Until',
       type: 'datetime',
-      initialValue: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      initialValue: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      validation: (rule: Rule) => rule.required()
     },
     {
       name: 'isActive',
@@ -51,6 +62,4 @@ const promoCodeSchema = {
       type: 'text'
     }
   ]
-};
-
-export default promoCodeSchema;
+});

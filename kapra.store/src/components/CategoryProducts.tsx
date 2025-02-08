@@ -11,7 +11,12 @@ interface Product {
   regularPrice: number;
   salePrice?: number;
   description: string;
-  images: any[];
+  images: {
+    asset: {
+      _ref: string;
+      _type: 'reference';
+    };
+  }[];
   category: {
     _id: string;
     name: string;

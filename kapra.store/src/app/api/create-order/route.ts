@@ -1,61 +1,49 @@
 import { NextResponse } from 'next/server';
 import { client } from '../../../sanity/client';
 
-interface OrderItem {
-  productId: string;
-  name: string;
-  quantity: number;
-  price: number;
-  selectedSize?: string;
-  selectedColor?: string;
-}
-
 export async function POST(request: Request) {
   try {
-    const { items, shippingInfo, total, userId } = await request.json();
+    const { items, shippingInfo, shippingRate, paymentMethod, total } = await request.json();
 
-    // Validate required fields
-    if (!items?.length || !shippingInfo || !total || !userId) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
-    }
-
-    const orderNumber = `ORD${Date.now()}`;
-
-    const order = {
+    // Create order in Sanity
+    const order = await client.create({
       _type: 'order',
-      orderNumber,
-      customer: {
-        _type: 'reference',
-        _ref: userId
+      orderDate: new Date().toISOString(),
+      status: 'pending',
+      paymentStatus: paymentMethod === 'cod' ? 'pending' : 'paid',
+      paymentMethod: paymentMethod,
+      totalAmount: total,
+      customerInfo: {
+        fullName: shippingInfo.fullName,
+        email: shippingInfo.email,
+        phoneNumber: shippingInfo.phoneNumber,
+        address: shippingInfo.address,
+        city: shippingInfo.city,
+        postalCode: shippingInfo.postalCode,
+        country: shippingInfo.country
       },
-      items: items.map((item: OrderItem) => ({
+      items: items.map((item: any) => ({
         _type: 'orderItem',
-        productId: item.productId,
+        productId: item._id,
         name: item.name,
         quantity: item.quantity,
         price: item.price,
         selectedSize: item.selectedSize,
         selectedColor: item.selectedColor
       })),
-      shippingInfo: {
-        _type: 'shippingInfo',
-        ...shippingInfo
+      shipping: {
+        cost: shippingRate.cost,
+        service: shippingRate.service,
+        estimatedDays: shippingRate.estimatedDays
       },
-      total,
-      status: 'pending',
-      createdAt: new Date().toISOString()
-    };
+      orderId: `ORD${Date.now()}${Math.floor(Math.random() * 1000)}`
+    });
 
-    const result = await client.create(order);
+    return NextResponse.json({ 
+      success: true, 
+      orderId: order._id 
+    });
 
-    if (!result?._id) {
-      throw new Error('Failed to create order in Sanity');
-    }
-
-    return NextResponse.json({ success: true, orderNumber });
   } catch (error) {
     console.error('Error creating order:', error);
     return NextResponse.json(

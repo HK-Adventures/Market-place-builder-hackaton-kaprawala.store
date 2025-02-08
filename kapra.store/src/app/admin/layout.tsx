@@ -3,6 +3,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
+import React from 'react';
 
 const adminNavItems = [
   { href: '/admin', label: 'Dashboard' },

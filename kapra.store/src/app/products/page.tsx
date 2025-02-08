@@ -2,18 +2,22 @@
 import { useState, useEffect } from 'react';
 import { client } from '../../sanity/client';
 import ProductCard from '../../components/ProductCard';
+import { Image as SanityImage } from 'sanity';
 
 interface Product {
   _id: string;
   name: string;
   price: number;
-  images: any[];
-  category: {
-    _id: string;
-    name: string;
-  };
-  description?: string;
+  description: string;
+  category: string;
   stockQuantity: number;
+  image: {
+    asset: {
+      _ref: string;
+      _type: 'reference';
+    };
+  };
+  images: SanityImage[];
 }
 
 export default function ProductsPage() {

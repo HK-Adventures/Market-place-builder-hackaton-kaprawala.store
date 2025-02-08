@@ -1,5 +1,3 @@
-import { headers } from 'next/headers';
-
 export default function StudioLayout({
   children,
 }: {

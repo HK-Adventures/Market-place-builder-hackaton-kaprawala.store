@@ -66,7 +66,7 @@ export default function ReturnPolicyPage() {
               <ul className="list-disc list-inside text-gray-600 space-y-2 ml-4">
                 <li>Original payment method will be refunded</li>
                 <li>Shipping costs are non-refundable</li>
-                <li>Return shipping costs are customer's responsibility</li>
+                <li>Return shipping costs are customer&apos;s responsibility</li>
                 <li>Store credit option available for faster processing</li>
               </ul>
             </section>
