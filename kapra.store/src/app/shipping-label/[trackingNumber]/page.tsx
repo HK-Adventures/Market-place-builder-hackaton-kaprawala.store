@@ -22,7 +22,7 @@ export default async function ShippingLabelPage({
             {/* Header */}
             <div className="flex justify-between items-start">
               <div>
-                <h1 className="text-2xl font-bold">ALMIRAH STORE</h1>
+                <h1 className="text-2xl font-bold">KAPRAWALA STORE</h1>
                 <p className="text-gray-600">Shipping Label</p>
               </div>
               <div className="text-right">
@@ -43,7 +43,7 @@ export default async function ShippingLabelPage({
               <div>
                 <h2 className="font-semibold mb-2">From:</h2>
                 <div className="border p-4 rounded">
-                  <p className="font-bold">ALMIRAH STORE</p>
+                  <p className="font-bold">KAPRAWALA STORE</p>
                   <p>123 Fashion Street</p>
                   <p>Lahore, 54000</p>
                   <p>Pakistan</p>

@@ -3,18 +3,18 @@ export default function AboutPage() {
     <div className="min-h-screen bg-white py-12">
       <div className="container mx-auto px-4">
         <div className="max-w-3xl mx-auto">
-          <h1 className="text-4xl font-bold text-center mb-8">About ALMIRAH</h1>
+          <h1 className="text-4xl font-bold text-center mb-8">About KAPRAWALA</h1>
           
           <div className="prose prose-lg mx-auto">
             <p className="text-gray-600 mb-6">
-              Welcome to ALMIRAH, your premier destination for quality clothing in Pakistan. 
+              Welcome to KAPRAWALA, your premier destination for quality clothing in Pakistan. 
               Founded with a vision to provide affordable yet stylish clothing, we&apos;ve grown 
               to become one of the most trusted online clothing retailers in the country.
             </p>
 
             <h2 className="text-2xl font-semibold mt-8 mb-4">Our Story</h2>
             <p className="text-gray-600 mb-6">
-              Established in 2024, ALMIRAH began as a small family business with a simple 
+              Established in 2024, KAPRAWALA began as a small family business with a simple 
               mission: to make quality fashion accessible to everyone. Today, we serve 
               customers across Pakistan, offering a carefully curated selection of 
               clothing that combines style, comfort, and affordability.
@@ -30,7 +30,7 @@ export default function AboutPage() {
 
             <h2 className="text-2xl font-semibold mt-8 mb-4">Our Promise</h2>
             <p className="text-gray-600 mb-6">
-              At ALMIRAH, we promise to provide you with:
+              At KAPRAWALA, we promise to provide you with:
             </p>
             <ul className="list-disc list-inside text-gray-600 mb-6 space-y-2">
               <li>Authentic, high-quality products</li>

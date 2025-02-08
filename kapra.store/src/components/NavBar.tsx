@@ -54,7 +54,7 @@ export default function NavBar() {
           {/* Logo - Always visible */}
           <div className="flex-shrink-0">
             <Link href="/" className="text-xl font-bold text-white">
-              KAPRA
+              KAPRAWALA
             </Link>
           </div>
 

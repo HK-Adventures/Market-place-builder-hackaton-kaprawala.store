@@ -31,7 +31,8 @@ export default function AdminProductsPage() {
   const { user, isAdmin } = useAuth();
 
   // Sanity Studio URL
-  const SANITY_STUDIO_URL = process.env.NEXT_PUBLIC_SANITY_STUDIO_URL || 'https://almirah.sanity.studio';
+  const SANITY_STUDIO_URL = process.env.NEXT_PUBLIC_SANITY_STUDIO_URL || 'https://kaprawala.store.sanity.studio';
+
 
   useEffect(() => {
     const fetchProducts = async () => {
