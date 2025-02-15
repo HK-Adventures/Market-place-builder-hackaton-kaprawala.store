@@ -1,7 +1,8 @@
 {
-  "version": 2,
-  "buildCommand": "npm run build",
-  "installCommand": "npm install",
-  "framework": "nextjs",
-  "regions": ["iad1"]
-} 
+    "rewrites":[
+        {
+            "source": "/(.*)",
+            "destination": "/"
+        }
+    ]
+}
