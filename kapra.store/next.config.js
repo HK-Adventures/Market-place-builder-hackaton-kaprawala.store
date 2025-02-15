@@ -25,6 +25,15 @@ const nextConfig = {
   experimental: {
     missingSuspenseWithCSRBailout: false,
   },
+  // Add Sanity Studio configuration
+  rewrites: async () => {
+    return [
+      {
+        source: '/studio/:path*',
+        destination: '/studio/index.html',
+      },
+    ];
+  },
 };
 
 export default nextConfig;
