@@ -20,18 +20,21 @@ export default function ProductsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch products with proper category reference
+        // Updated query to include all required fields
         const productsQuery = `*[_type == "product" && defined(category)] {
           _id,
           name,
-          price,
           description,
+          regularPrice,
+          salePrice,
           stockQuantity,
           images,
           "category": category->{
             _id,
             name
-          }
+          },
+          colors,
+          sizes
         } | order(_createdAt desc)`;
 
         // Fetch only active categories
