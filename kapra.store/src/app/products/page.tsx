@@ -4,6 +4,7 @@ import { client } from '../../sanity/client';
 import ProductCard from '../../components/ProductCard';
 import { Product } from '../../types/product'
 
+
 interface Category {
   _id: string;
   name: string;
