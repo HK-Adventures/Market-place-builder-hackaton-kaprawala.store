@@ -14,6 +14,7 @@ export async function middleware(req: NextRequest) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
 
+    // Handle admin routes
     if (req.nextUrl.pathname.startsWith('/admin')) {
       if (!session?.user) {
         return NextResponse.redirect(new URL('/login', req.url));
@@ -25,6 +26,13 @@ export async function middleware(req: NextRequest) {
       }
     }
 
+    // Handle studio routes
+    if (req.nextUrl.pathname.startsWith('/studio')) {
+      if (!session?.user) {
+        return NextResponse.redirect(new URL('/login', req.url));
+      }
+    }
+
     return res;
   } catch (error) {
     console.error('Middleware error:', error);
@@ -33,5 +41,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*']
+  matcher: ['/admin/:path*', '/studio/:path*']
 }; 

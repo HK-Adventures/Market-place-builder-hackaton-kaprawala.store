@@ -25,15 +25,23 @@ const nextConfig = {
   experimental: {
     missingSuspenseWithCSRBailout: false,
   },
-  // Add Sanity Studio configuration
+  // Update Sanity Studio configuration
   rewrites: async () => {
     return [
       {
-        source: '/studio/:path*',
+        source: '/studio',
         destination: '/studio/index.html',
       },
+      {
+        source: '/studio/:path*',
+        destination: '/studio/index.html',
+      }
     ];
   },
+  // Add trailing slashes to prevent 404s
+  trailingSlash: true,
+  // Ensure pages are properly built
+  output: 'standalone',
 };
 
 export default nextConfig;
