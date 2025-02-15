@@ -1,21 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "next build",
+  "buildCommand": "npm run build",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "outputDirectory": ".next",
-  "routes": [
-    {
-      "src": "/studio",
-      "dest": "/studio/[[...tool]]/page"
-    },
-    {
-      "src": "/studio/(.*)",
-      "dest": "/studio/[[...tool]]/page"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
-  ]
+  "regions": ["iad1"]
 } 

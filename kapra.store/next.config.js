@@ -22,21 +22,41 @@ const nextConfig = {
     // During deployment, we can ignore ESLint errors
     ignoreDuringBuilds: true,
   },
-  // Update Sanity Studio configuration
+  // Simplify studio configuration
   rewrites: async () => {
     return [
       {
         source: '/studio',
-        destination: '/studio/index.html',
+        destination: '/studio/[[...tool]]',
       },
       {
         source: '/studio/:path*',
-        destination: '/studio/index.html',
+        destination: '/studio/[[...tool]]',
       }
     ];
   },
-  // Add trailing slashes to prevent 404s
-  trailingSlash: true,
+  // Add proper CORS and security headers
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+        ],
+      },
+    ];
+  },
   // Ensure pages are properly built
   output: 'standalone',
 };

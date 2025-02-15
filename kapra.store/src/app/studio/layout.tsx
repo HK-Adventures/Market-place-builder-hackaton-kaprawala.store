@@ -6,7 +6,7 @@ export default function StudioLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="h-screen">
+    <div className="h-screen w-screen">
       {children}
     </div>
   );

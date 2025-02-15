@@ -19,7 +19,17 @@ const config = defineConfig({
   ],
   schema: {
     types: schemaTypes,
-  }
+  },
+  document: {
+    // Ensure proper routing within the studio
+    productionUrl: async (prev, context) => {
+      const { document } = context;
+      if (document._type === 'product') {
+        return `/products/${document._id}`;
+      }
+      return prev;
+    },
+  },
 })
 
 export default config
