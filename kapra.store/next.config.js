@@ -22,9 +22,6 @@ const nextConfig = {
     // During deployment, we can ignore ESLint errors
     ignoreDuringBuilds: true,
   },
-  experimental: {
-    missingSuspenseWithCSRBailout: false,
-  },
   // Update Sanity Studio configuration
   rewrites: async () => {
     return [

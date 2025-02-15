@@ -6,8 +6,12 @@
   "outputDirectory": ".next",
   "routes": [
     {
+      "src": "/studio",
+      "dest": "/studio/[[...tool]]/page"
+    },
+    {
       "src": "/studio/(.*)",
-      "dest": "/studio/index.html"
+      "dest": "/studio/[[...tool]]/page"
     },
     {
       "src": "/(.*)",
