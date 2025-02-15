@@ -57,27 +57,15 @@ interface ShippingResponse {
   shippingCost: number;
 }
 
-interface TrackingResponse {
-  status: string;
-  location?: string;
-  timestamp?: string;
-  message?: string;
-}
-
-interface Address {
-  street: string;
-  city: string;
-  postalCode: string;
-  country: string;
-}
-
 interface OrderDetails {
   _id: string;
   orderId: string;
   items: Array<{
     name: string;
     quantity: number;
+    price: number;
   }>;
+  totalAmount?: number;
 }
 
 interface ShippingInfo {
@@ -92,6 +80,30 @@ interface TrackingInfo {
   trackingNumber: string;
   status: string;
   location?: string;
+}
+
+// Add missing interfaces at the top of the file
+interface ShippingError {
+  code: string;
+  message: string;
+}
+
+interface Address {
+  street: string;
+  city: string;
+  postalCode: string;
+  country: string;
+}
+
+interface OrderItem {
+  id: string;
+  quantity: number;
+  weight?: number;
+  dimensions?: {
+    length: number;
+    width: number;
+    height: number;
+  };
 }
 
 export const shippingService = {
@@ -190,6 +202,67 @@ export const shippingService = {
   extractDateFromTracking(trackingNumber: string): number {
     const parts = trackingNumber.split('-');
     return parseInt(parts[2], 36);
+  },
+
+  calculateShippingRates: async (_orderDetails: OrderDetails, _shippingInfo: ShippingInfo): Promise<ShippingRate[]> => {
+    // Mock shipping rates calculation
+    return [
+      {
+        service: 'Standard',
+        cost: 250,
+        currency: 'PKR',
+        estimatedDays: 3
+      },
+      {
+        service: 'Express',
+        cost: 500,
+        currency: 'PKR',
+        estimatedDays: 1
+      }
+    ];
+  },
+
+  validateAddress: async (_address: Address) => {
+    // Add address validation implementation
+  },
+
+  getTrackingInfo: async (_trackingNumber: string) => {
+    // Mock tracking info
+    return {
+      status: 'In Transit',
+      location: 'Local Shipping Facility',
+      estimatedDelivery: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
+    };
+  },
+
+  calculatePackageSize: (_items: Array<{ dimensions?: { length: number; width: number; height: number } }>): { length: number; width: number; height: number } => {
+    // Mock package size calculation
+    return {
+      length: 30,
+      width: 20,
+      height: 10
+    };
+  },
+
+  handleShippingError: async (error: ShippingError) => {
+    console.error('Shipping error:', error);
+    // Add error handling implementation
+  },
+
+  updateTrackingInfo: async (trackingNumber: string) => {
+    // Add tracking update implementation
+  },
+
+  validateShippingDetails: async (_orderDetails: OrderDetails, _shippingInfo: ShippingInfo) => {
+    // Add validation implementation
+  },
+
+  updateTracking: async (trackingNumber: string) => {
+    // Add tracking update implementation
+  },
+
+  validateItems: async (items: OrderItem[]) => {
+    // Add items validation implementation
   }
 };
 
@@ -203,7 +276,17 @@ export const generateTrackingNumber = () => {
   return `KS-${year}${month}${day}-${random}`;
 };
 
-export const generateShippingLabel = async (order: any) => {
+interface OrderWithTracking {
+  _id: string;
+  orderId: string;
+  customerInfo?: {
+    fullName: string;
+    email: string;
+    phoneNumber: string;
+  };
+}
+
+export const generateShippingLabel = async (order: OrderWithTracking) => {
   try {
     if (!order?._id) {
       throw new Error('Invalid order data');

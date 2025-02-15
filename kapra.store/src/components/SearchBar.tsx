@@ -1,25 +1,22 @@
 'use client'
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { client } from '../sanity/client';
 import { urlFor } from '../sanity/lib/image';
 import Link from 'next/link';
 import { useClickOutside } from '../hooks/useClickOutside';
 import Image from 'next/image';
-import { Image as SanityImage } from 'sanity';
 
 interface SearchProduct {
   _id: string;
   name: string;
   price: number;
-  image: any;
+  image: {
+    asset: {
+      _ref: string;
+      _type: 'reference';
+    };
+  };
   category: string;
-}
-
-interface SearchResult {
-  _id: string;
-  name: string;
-  price: number;
-  image: SanityImage;
 }
 
 export default function SearchBar() {
@@ -61,10 +58,6 @@ export default function SearchBar() {
 
     return () => clearTimeout(delayDebounceFn);
   }, [searchTerm]);
-
-  const handleSearch = async (query: string) => {
-    // ... code
-  };
 
   return (
     <div ref={searchRef} className="relative">

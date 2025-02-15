@@ -3,9 +3,10 @@ import { ProductClient } from './ProductClient';
 import { client } from '../../../sanity/client';
 import { Image as SanityImage } from 'sanity';
 
-interface PageProps {
-  params: Promise<{ id: string }>;
-  searchParams?: Promise<any>;
+interface ProductParams {
+  params: {
+    id: string;
+  };
 }
 
 interface Product {
@@ -22,18 +23,15 @@ interface Product {
   salePrice?: number;
 }
 
-export default async function ProductPage({ 
-  params 
-}: PageProps) {
-  const resolvedParams = await params;
+export default async function ProductPage({ params }: ProductParams) {
   const product: Product = await client.fetch(`*[_type == "product" && _id == $id][0]`, { 
-    id: resolvedParams.id 
+    id: params.id 
   });
   return <ProductClient product={product} />;
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const resolvedParams = await params;
+export async function generateMetadata({ params }: ProductParams): Promise<Metadata> {
+  const resolvedParams = params;
   const product: Product = await client.fetch(`*[_type == "product" && _id == $id][0]`, { 
     id: resolvedParams.id 
   });

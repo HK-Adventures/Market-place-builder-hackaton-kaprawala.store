@@ -24,24 +24,6 @@ interface OrderItem {
   selectedColor?: string;
 }
 
-interface OrderDetails {
-  orderId: string;
-  customerInfo: {
-    fullName: string;
-    email: string;
-    phoneNumber: string;
-    address: string;
-    city: string;
-    postalCode: string;
-    country: string;
-  };
-  items: Array<{
-    name: string;
-    quantity: number;
-    price: number;
-  }>;
-}
-
 interface Order {
   _id: string;
   orderId: string;

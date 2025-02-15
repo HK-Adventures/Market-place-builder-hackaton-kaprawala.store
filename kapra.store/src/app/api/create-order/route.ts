@@ -1,9 +1,48 @@
 import { NextResponse } from 'next/server';
 import { client } from '../../../sanity/client';
 
+interface OrderItem {
+  name: string;
+  quantity: number;
+  price: number;
+  selectedSize?: string;
+  selectedColor?: string;
+}
+
+interface OrderData {
+  items: OrderItem[];
+  customerInfo: {
+    fullName: string;
+    email: string;
+    phoneNumber: string;
+    address: string;
+    city: string;
+    postalCode: string;
+    country: string;
+  };
+  shippingInfo: {
+    fullName: string;
+    email: string;
+    phoneNumber: string;
+    address: string;
+    city: string;
+    postalCode: string;
+    country: string;
+  };
+  shippingRate: {
+    cost: number;
+    service: string;
+    estimatedDays: number;
+  };
+  totalAmount: number;
+  total: number;
+  paymentMethod: string;
+}
+
 export async function POST(request: Request) {
   try {
-    const { items, shippingInfo, shippingRate, paymentMethod, total } = await request.json();
+    const data: OrderData = await request.json();
+    const { shippingInfo, shippingRate, paymentMethod, total } = data;
 
     // Create order in Sanity
     const order = await client.create({
@@ -22,9 +61,9 @@ export async function POST(request: Request) {
         postalCode: shippingInfo.postalCode,
         country: shippingInfo.country
       },
-      items: items.map((item: any) => ({
+      items: data.items.map((item: OrderItem) => ({
         _type: 'orderItem',
-        productId: item._id,
+        productId: item.name,
         name: item.name,
         quantity: item.quantity,
         price: item.price,

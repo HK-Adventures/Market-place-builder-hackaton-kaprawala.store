@@ -3,16 +3,14 @@ import React from 'react';
 import { Metadata } from 'next';
 import PrintButton from '@/components/PrintButton';
 
-interface PageProps {
-  params: Promise<{ trackingNumber: string }>;
-  searchParams?: Promise<any>;
+interface TrackingParams {
+  params: {
+    trackingNumber: string;
+  };
 }
 
-export default async function ShippingLabelPage({ 
-  params 
-}: PageProps) {
-  const resolvedParams = await params;
-  const trackingNumber = resolvedParams.trackingNumber;
+export default async function ShippingLabelPage({ params }: TrackingParams) {
+  const trackingNumber = params.trackingNumber;
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -87,7 +85,7 @@ export default async function ShippingLabelPage({
 
 export async function generateMetadata({ 
   params 
-}: PageProps): Promise<Metadata> {
+}: TrackingParams): Promise<Metadata> {
   const resolvedParams = await params;
   const trackingNumber = resolvedParams.trackingNumber;
 

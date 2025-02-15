@@ -1,4 +1,4 @@
-import { defineField, defineType, Rule, ValidationContext, SanityDocument, StringRule, NumberRule, DatetimeRule } from 'sanity'
+import { defineField, defineType, StringRule, NumberRule, DatetimeRule } from 'sanity'
 
 
 export default defineType({

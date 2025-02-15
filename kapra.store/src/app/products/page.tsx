@@ -1,12 +1,18 @@
 'use client'
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { client } from '../../sanity/client';
 import ProductCard from '../../components/ProductCard';
 import { Product } from '../../types/product'
 
+interface Category {
+  _id: string;
+  name: string;
+  isActive?: boolean;
+}
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | 'all'>('all');
   const [loading, setLoading] = useState(true);
 

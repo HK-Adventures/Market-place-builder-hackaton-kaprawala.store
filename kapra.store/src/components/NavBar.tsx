@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCart } from '../context/CartContext';
 import SearchBar from './SearchBar';
-import { Menu } from '@headlessui/react';
+import { Menu, MenuItem, MenuButton, MenuItems } from '@headlessui/react';
 import { supabase } from '../lib/supabase';
 import { useRouter } from 'next/navigation';
 import { FiUser } from 'react-icons/fi';
@@ -126,88 +126,88 @@ export default function NavBar() {
 
             {/* Profile Dropdown - Updated colors */}
             <Menu as="div" className="relative">
-              <Menu.Button className="flex items-center text-gray-200 hover:text-white">
+              <MenuButton className="flex items-center text-gray-200 hover:text-white">
                 <FiUser className="w-6 h-6" />
-              </Menu.Button>
+              </MenuButton>
 
-              <Menu.Items className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+              <MenuItems className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
                 {userState ? (
                   <>
-                    <Menu.Item>
-                      {({ active }) => (
+                    <MenuItem>
+                      {() => (
                         <div className="px-4 py-2 text-sm text-gray-700 border-b">
                           <p className="font-medium">{userState.email}</p>
                         </div>
                       )}
-                    </Menu.Item>
-                    <Menu.Item>
-                      {({ active }) => (
+                    </MenuItem>
+                    <MenuItem>
+                      {() => (
                         <Link
                           href="/my-orders"
                           className={`block px-4 py-2 text-sm ${
-                            active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
+                            'text-gray-700'
                           }`}
                         >
                           My Orders
                         </Link>
                       )}
-                    </Menu.Item>
+                    </MenuItem>
                     {userState.email?.toLowerCase() === process.env.NEXT_PUBLIC_ADMIN_EMAIL?.toLowerCase() && (
-                      <Menu.Item>
-                        {({ active }) => (
+                      <MenuItem>
+                        {() => (
                           <Link
                             href="/admin"
                             className={`block px-4 py-2 text-sm ${
-                              active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
+                              'text-gray-700'
                             }`}
                           >
                             Admin Dashboard
                           </Link>
                         )}
-                      </Menu.Item>
+                      </MenuItem>
                     )}
-                    <Menu.Item>
-                      {({ active }) => (
+                    <MenuItem>
+                      {() => (
                         <button
                           onClick={handleLogout}
                           className={`block w-full text-left px-4 py-2 text-sm ${
-                            active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
+                            'text-gray-700'
                           }`}
                         >
                           Logout
                         </button>
                       )}
-                    </Menu.Item>
+                    </MenuItem>
                   </>
                 ) : (
                   <>
-                    <Menu.Item>
-                      {({ active }) => (
+                    <MenuItem>
+                      {() => (
                         <Link
                           href="/login"
                           className={`block px-4 py-2 text-sm ${
-                            active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
+                            'text-gray-700'
                           }`}
                         >
                           Login
                         </Link>
                       )}
-                    </Menu.Item>
-                    <Menu.Item>
-                      {({ active }) => (
+                    </MenuItem>
+                    <MenuItem>
+                      {() => (
                         <Link
                           href="/register"
                           className={`block px-4 py-2 text-sm ${
-                            active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
+                            'text-gray-700'
                           }`}
                         >
                           Register
                         </Link>
                       )}
-                    </Menu.Item>
+                    </MenuItem>
                   </>
                 )}
-              </Menu.Items>
+              </MenuItems>
             </Menu>
           </div>
         </div>

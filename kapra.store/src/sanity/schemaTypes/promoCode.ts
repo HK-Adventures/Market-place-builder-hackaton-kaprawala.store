@@ -1,11 +1,5 @@
 import { defineType, Rule } from 'sanity';
 
-interface PromoCodeDocument {
-  code: string;
-  discountType: 'percentage' | 'fixed';
-  discountValue: number;
-  minPurchase?: number;
-}
 
 export default defineType({
   name: 'promoCode',

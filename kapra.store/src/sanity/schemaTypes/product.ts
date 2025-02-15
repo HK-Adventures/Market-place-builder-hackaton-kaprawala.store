@@ -1,4 +1,4 @@
-import { defineType } from 'sanity'
+import { defineType, Rule, InputProps } from 'sanity'
 
 export default defineType({
   name: 'product',
@@ -73,7 +73,7 @@ export default defineType({
       title: 'Available Colors',
       type: 'array',
       validation: rule => {
-        return rule.custom(colors => {
+        return rule.custom((colors: any[]) => {
           if (!colors || !colors.length) return true;
           return true;
         });
@@ -157,8 +157,8 @@ export default defineType({
           }
         }
       }],
-      validation: (rule, context) => {
-        return rule.custom((sizes) => {
+      validation: (rule: Rule) => {
+        return rule.custom((sizes: any[]) => {
           if (!sizes || !sizes.length) return true;
           return true;
         });
@@ -174,7 +174,7 @@ export default defineType({
       name: 'featured',
       title: 'Featured',
       type: 'boolean',
-      validation: (rule, context) => {
+      validation: (rule: Rule) => {
         return rule.required();
       }
     }

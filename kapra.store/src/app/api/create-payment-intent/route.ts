@@ -3,20 +3,31 @@ import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
+interface PaymentData {
+  items: Array<{
+    price: number;
+    quantity: number;
+  }>;
+  shipping: number;
+  amount: number;
+  currency: string;
+  paymentMethodType: string;
+}
+
 export async function POST(request: Request) {
   try {
-    const { items, shipping } = await request.json();
+    const data: PaymentData = await request.json();
 
     // Calculate total amount
-    const amount = items.reduce(
-      (sum: number, item: any) => sum + (item.price * item.quantity),
+    const amount = data.items.reduce(
+      (sum: number, item: PaymentData['items'][0]) => sum + (item.price * item.quantity),
       0
-    ) + shipping;
+    ) + data.shipping;
 
     // Create PaymentIntent
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100), // Convert to cents
-      currency: 'pkr',
+      currency: data.currency,
       automatic_payment_methods: {
         enabled: true,
       },

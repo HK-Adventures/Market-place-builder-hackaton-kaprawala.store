@@ -20,7 +20,6 @@ interface CartItem {
 
 // Define the type for the context value
 interface CartContextType {
-  cart: CartItem[];
   cartItems: CartItem[];
   addToCart: (item: CartItem) => void;
   removeFromCart: (itemId: string) => void;
@@ -33,11 +32,10 @@ interface CartContextType {
 
 // Create the context with a default value
 const CartContext = createContext<CartContextType>({
-  cart: [],
   cartItems: [],
-  addToCart: (_item) => {},
-  removeFromCart: (_itemId) => {},
-  updateQuantity: (_itemId, _quantity) => {},
+  addToCart: () => {},
+  removeFromCart: () => {},
+  updateQuantity: () => {},
   clearCart: () => {},
   isAuthenticated: false,
   calculateTotal: () => 0,
@@ -53,9 +51,9 @@ export const useCart = () => {
 };
 
 // CartProvider component
-export const CartProvider = ({ children }: { children: React.ReactNode }) => {
+export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [mounted, setMounted] = useState(false);
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // First useEffect - mounting and cart loading
@@ -63,15 +61,15 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     setMounted(true);
     const savedCart = localStorage.getItem('cart');
     if (savedCart) {
-      setCart(JSON.parse(savedCart));
+      setCartItems(JSON.parse(savedCart));
     }
   }, []);
 
   // Second useEffect - cart saving
   useEffect(() => {
     if (!mounted) return;
-    localStorage.setItem('cart', JSON.stringify(cart));
-  }, [cart, mounted]);
+    localStorage.setItem('cart', JSON.stringify(cartItems));
+  }, [cartItems, mounted]);
 
   // Third useEffect - auth handling
   useEffect(() => {
@@ -85,7 +83,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setIsAuthenticated(!!session);
       if (!session) {
-        setCart([]);
+        setCartItems([]);
         localStorage.removeItem('cart');
       }
     });
@@ -101,15 +99,15 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    setCart(prevCart => {
-      const existingItem = prevCart.find(i => i._id === item._id && i.selectedSize === item.selectedSize && i.selectedColor === item.selectedColor);
+    setCartItems(prev => {
+      const existingItem = prev.find(i => i._id === item._id && i.selectedSize === item.selectedSize && i.selectedColor === item.selectedColor);
 
       if (existingItem) {
         // Check if adding one more would exceed stock
         if (existingItem.quantity >= item.stockQuantity) {
-          return prevCart;
+          return prev;
         }
-        return prevCart.map(i =>
+        return prev.map(i =>
           i._id === item._id && 
           i.selectedSize === item.selectedSize && 
           i.selectedColor === item.selectedColor
@@ -117,23 +115,23 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
             : i
         );
       }
-      return [...prevCart, { ...item }];
+      return [...prev, { ...item }];
     });
   };
 
-  const removeFromCart = (productId: string) => {
-    setCart(prevCart => prevCart.filter(item => item._id !== productId));
+  const removeFromCart = (itemId: string) => {
+    setCartItems(prev => prev.filter(item => item._id !== itemId));
   };
 
-  const updateQuantity = (productId: string, quantity: number) => {
+  const updateQuantity = (itemId: string, quantity: number) => {
     if (quantity <= 0) {
-      removeFromCart(productId);
+      removeFromCart(itemId);
       return;
     }
     
-    setCart(prevCart =>
-      prevCart.map(item =>
-        item._id === productId
+    setCartItems(prev =>
+      prev.map(item =>
+        item._id === itemId
           ? { ...item, quantity: Math.min(quantity, item.stockQuantity) }
           : item
       ).filter(item => item.quantity > 0)
@@ -141,17 +139,16 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const clearCart = () => {
-    setCart([]);
+    setCartItems([]);
     localStorage.removeItem('cart');
   };
 
   const calculateTotal = () => {
-    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+    return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
   const value = {
-    cart,
-    cartItems: cart,
+    cartItems,
     addToCart,
     removeFromCart,
     updateQuantity,

@@ -1,4 +1,6 @@
-export default function StudioLayout({
+import React from 'react';
+
+export default function StudioLayout({ 
   children,
 }: {
   children: React.ReactNode;

@@ -1,4 +1,3 @@
-import { Image } from 'sanity'
 
 export interface Product {
   _id: string;

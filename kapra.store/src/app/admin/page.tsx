@@ -4,24 +4,24 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import { client } from '../../sanity/client';
 
-interface TopProduct {
+interface OrderItem {
   name: string;
-  totalSold: number;
-  revenue: number;
+  quantity: number;
+  price: number;
 }
 
-interface OrderSummary {
-  totalOrders: number;
-  pendingOrders: number;
-  completedOrders: number;
-  canceledOrders: number;
-  totalRevenue: number;
-  avgOrderValue: number;
-  totalItems: number;
-  topProducts: TopProduct[];
+interface Order {
+  _id: string;
+  orderId: string;
+  orderDate: string;
+  totalAmount: number;
+  status: string;
+  items: OrderItem[];
+  customerInfo: {
+    fullName: string;
+    email: string;
+  };
 }
-
-type TimeFilter = 'today' | '7days' | '30days' | 'year';
 
 interface DashboardStats {
   totalOrders: number;
@@ -29,17 +29,7 @@ interface DashboardStats {
   pendingOrders: number;
   canceledOrders: number;
   totalItems: number;
-  recentOrders: Array<{
-    _id: string;
-    orderId: string;
-    orderDate: string;
-    totalAmount: number;
-    status: string;
-    customerInfo: {
-      fullName: string;
-      email: string;
-    };
-  }>;
+  recentOrders: Order[];
 }
 
 export default function AdminDashboard() {
@@ -74,13 +64,13 @@ export default function AdminDashboard() {
 
         const stats = {
           totalOrders: orders?.length || 0,
-          totalRevenue: orders?.reduce((sum: number, order: any) => 
+          totalRevenue: orders?.reduce((sum: number, order: Order) => 
             sum + (order.totalAmount || 0), 0) || 0,
-          pendingOrders: orders?.filter((order: any) => 
+          pendingOrders: orders?.filter((order: Order) => 
             order.status === 'pending')?.length || 0,
-          canceledOrders: orders?.filter((order: any) => 
+          canceledOrders: orders?.filter((order: Order) => 
             order.status === 'canceled')?.length || 0,
-          totalItems: orders?.reduce((sum: number, order: any) => 
+          totalItems: orders?.reduce((sum: number, order: Order) => 
             sum + (order.items?.length || 0), 0) || 0,
           recentOrders: orders?.slice(0, 5) || []
         };

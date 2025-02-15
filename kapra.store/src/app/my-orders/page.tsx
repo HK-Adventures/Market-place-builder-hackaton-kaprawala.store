@@ -259,7 +259,7 @@ export default function MyOrdersPage() {
 
         {filteredOrders.length === 0 ? (
           <div className="bg-white rounded-lg shadow-md p-6 text-center">
-            <p className="text-gray-600">No orders found matching "{searchTerm}"</p>
+            <p className="text-gray-600">No orders found matching &quot;{searchTerm}&quot;</p>
           </div>
         ) : (
           <div className="space-y-6">

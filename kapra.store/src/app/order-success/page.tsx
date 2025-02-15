@@ -129,7 +129,7 @@ export default function OrderSuccessPage() {
               Order Confirmed!
             </h1>
             <p className="text-gray-600">
-              Thank you for your order. We'll send you shipping confirmation soon.
+              Thank you for your order. We will send you shipping confirmation soon.
             </p>
           </div>
 
